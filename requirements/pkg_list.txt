@@ -1,0 +1,48 @@
+### Instructions ###
+# To list current pkgs:
+#   $ sudo dpkg -l | less
+# Install pkg list below:
+#   $ apt-get install $(grep -vE "^\s*#" pkg_list.txt  | tr "\n" " ")
+
+### Package List ###
+python-openssl
+python-pip
+python2.7-dev
+php7.0-curl
+php7.0-dev
+php7.0-mbstring
+rabbitmq-server
+nginx
+logrotate
+nodejs
+npm
+
+### Install & Config MongoDB 3.2 ###
+# Install: 
+#   $ sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
+#   $ echo "deb http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.2.list
+#   $ sudo apt-get update
+#   $ sudo apt-get install mongodb-org
+# Start mongod:
+#   $ sudo systemctl start mongod
+# Enable on startup:
+#   $ sudo systemctl enable mongod
+# Create authenticated user:
+#   $ mongo
+#   > use admin
+#   > db.createUser({
+#	user: "usr_name", 
+#	pwd: "password", 
+#	roles: [
+#		{"role":"root", "db":"admin"}
+#	]
+#   })
+# Enable authentication:
+#    $ vim /etc/mongod.conf
+# Uncomment line "security:"
+# Add line below (2 space tab):
+#   authorization: enabled
+# Restart mongod:
+#   $ service mongod restart
+# To login as shell user:
+#   $ mongo localhost:<port> -u "usr_name" -p "password" --authenticationDatabase "admin"
