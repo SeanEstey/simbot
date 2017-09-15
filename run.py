@@ -25,14 +25,15 @@ def main(argv):
     import workers
 
     try:
-        opts, args = getopt.getopt(argv,"cds", ['celerybeat', 'debug'])
+        opts, args = getopt.getopt(argv,"bcd", ['beat', 'celery', 'debug'])
     except getopt.GetoptError:
         sys.exit(2)
 
     for opt, arg in opts:
-        if opt in('-c', '--celerybeat'):
+        if opt in('-b', '--beat'):
             environ['BEAT'] = 'True'
-            beat = True
+        if opt in('-c', '--celery'):
+            environ['CELERY'] = 'True'
         elif opt in ('-d', '--debug'):
             app.config['DEBUG'] = True
             app.config['USE_DEBUGGER'] = True
@@ -42,12 +43,13 @@ def main(argv):
     set_environ(app)
     workers.kill()
     time.sleep(1)
-    workers.start(beat=bool(environ.get('BEAT')))
+    if bool(environ.get('CELERY',False)):
+        workers.start(beat=bool(environ.get('BEAT',False)))
     time.sleep(1)
     startup_msg(app, show_celery=False)
 
     app.logger.info("Server ready @%s", app.config['LOCAL_URL'])
-    app.run(host='127.0.0.1', port=8000, debug=True)
+    app.run(host='127.0.0.1', port=8000, debug=app.config['DEBUG'])
 
 #-------------------------------------------------------------------------------
 if __name__ == "__main__":

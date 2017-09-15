@@ -19,6 +19,22 @@ DB = 'simbot'
 APP_ROOT_LOGGER_NAME = 'app'
 CELERY_ROOT_LOGGER_NAME = 'app'
 
+
+# Exchange Metadata
+
+CBIX = {
+    'url': 'http://api.cbix.ca/v1/index'
+}
+QUADCX = {
+    'name':'QuadrigaCX',
+    'ticker_url': 'https://api.quadrigacx.com/v2/ticker', # ?book=bname
+    'books_url':'https://api.quadrigacx.com/v2/order_book', # ?book=bname
+    'books':[
+        {'name':'btc_cad', 'fiat':'cad', 'token':'btc'},
+        {'name':'eth_cad', 'fiat':'cad', 'token':'eth'}
+    ]
+}
+
 # Other
 ENV_VARS = [
     'SANDBOX',

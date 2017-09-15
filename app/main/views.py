@@ -19,5 +19,6 @@ def err(e):
 #-------------------------------------------------------------------------------
 @main.route('/book')
 def order_book():
+
     return render_template('book.html')
 

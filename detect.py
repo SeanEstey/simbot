@@ -38,7 +38,7 @@ def startup_msg(app, show_celery=False):
     "     \/         \/    \/              \n"
     msg +=\
     "   %s\n" % os_desc() +\
-    "   mem: %s/%s\n\n" % (free,total) +\
+    "   mem: %s/%s\n" % (free,total) +\
     "   %s\n" % host +\
     "   flask v%s\n" % flsk_v +\
     "   debug mode %s\n" % debug
@@ -50,6 +50,7 @@ def startup_msg(app, show_celery=False):
         return False
 
     from app.tasks import celery as celery_app
+    import celery
 
     insp = celery_app.control.inspect()
     while not insp.stats():

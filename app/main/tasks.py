@@ -10,8 +10,14 @@ from celery.exceptions import Ignore
 from app.lib.timer import Timer
 log = logging.getLogger(__name__)
 
+
 #-------------------------------------------------------------------------------
 @celery.task(bind=True)
-def task_exec_trade(self, arg1=None, arg2=None, arg3=None, **rest):
+def update_books(self, **rest):
 
-    log.info('Executing trade as celery task')
+    from app.main.quadrigacx import cbix, quadcx_ticker, quadcx_books
+
+    cbix()
+    quadcx_ticker()
+    quadcx_books()
+
