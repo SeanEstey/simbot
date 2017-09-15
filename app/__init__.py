@@ -4,14 +4,11 @@ from flask import Flask, g, session, has_app_context, has_request_context
 from celery import Celery
 
 # GLOBALS
-
-#login_manager = LoginManager()
 celery = Celery(__name__, broker='amqp://')
 from uber_task import UberTask
 celery.Task = UberTask
 
 # CLASSES
-
 class DebugFilter(logging.Filter):
     def filter(self, record):
         return record.levelno == logging.DEBUG
@@ -50,7 +47,6 @@ def create_app(pkg_name, kv_sess=True, mongo_client=True):
 
     # Flask App Logger & Handlers
     app.logger.setLevel(DEBUG)
-
     app.logger.addHandler(file_handler(DEBUG,
         '%sdebug.log'%path,
         filtr=DEBUG,
@@ -69,7 +65,6 @@ def create_app(pkg_name, kv_sess=True, mongo_client=True):
         color=colors.RED))
 
     # Blueprints
-    from app.main import endpoints
     from app.main import main as main_mod
     app.register_blueprint(main_mod)
 

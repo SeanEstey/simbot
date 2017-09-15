@@ -9,10 +9,3 @@ timezone = 'Canada/Mountain'
 task_time_limit = 3000
 worker_concurrency = 1
 beat_schedule = {}
-
-"""
-'update_cache': {
-    'task': 'app.main.tasks.update_recent_cache',
-    'schedule': crontab(minute=0, hour='*/1')
-}
-"""

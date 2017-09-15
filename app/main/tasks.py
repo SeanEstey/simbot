@@ -12,6 +12,6 @@ log = logging.getLogger(__name__)
 
 #-------------------------------------------------------------------------------
 @celery.task(bind=True)
-def _task_name(self, arg1=None, arg2=None, arg3=None, **rest):
+def task_exec_trade(self, arg1=None, arg2=None, arg3=None, **rest):
 
-    pass
+    log.info('Executing trade as celery task')

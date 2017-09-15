@@ -3,8 +3,9 @@ from flask import g, request
 log = logging.getLogger(__name__)
 from . import main
 
-def simulate():
+def start_sim():
 
-    log.info('hey hey!')
-
+    from app.main.tasks import task_exec_trade
+    task_exec_trade.delay()
+    log.info('Task run')
     return 'ok'

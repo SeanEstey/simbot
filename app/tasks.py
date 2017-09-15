@@ -1,6 +1,5 @@
 '''app.tasks'''
 import logging, os
-import gc
 from flask import g
 from celery.task.control import revoke
 from celery.signals import task_prerun, task_postrun, task_failure, task_revoked
@@ -29,21 +28,6 @@ def _celeryd_after_setup(sender, instance, **kwargs):
 def parent_ready(**kwargs):
     '''Called by parent worker process'''
 
-    import db_auth
-    from app.lib.mongo_logger import BufferedMongoHandler
-
-    authenticate(parent_client)
-
-    handler = BufferedMongoHandler(
-        level=logging.WARNING,
-        client=parent_client,
-        connect=True,
-        db_name='simbot',
-        user=db_auth.user,
-        pw=db_auth.password)
-    app.logger.addHandler(handler)
-    handler.init_buf_timer()
-
     print 'WORKER_READY. PID %s' % os.getpid()
 
 @worker_shutdown.connect
@@ -55,27 +39,14 @@ def parent_shutdown(**kwargs):
 def child_init(**kwargs):
     '''Called by each child worker process (forked)'''
 
-    import db_auth
-    from app.lib.mongo_logger import BufferedMongoHandler
-
     # Experimental
     global celery
-    UberTask.db_client = child_client = create_client()
+    UberTask.db_client = child_client = create_client(auth=False)
     celery.Task = UberTask
 
     # Set root logger for this child process
     logger = logging.getLogger('app')
     logger.setLevel(logging.DEBUG)
-
-    handler = BufferedMongoHandler(
-        level = logging.DEBUG,
-        client = child_client,
-        connect = True,
-        db_name='simbot',
-        user = db_auth.user,
-        pw = db_auth.password)
-    handler.init_buf_timer()
-    logger.addHandler(handler)
 
     print 'WORKER_CHILD_INIT. PID %s' % os.getpid()
 
@@ -96,15 +67,6 @@ def task_done(signal=None, sender=None, task_id=None, task=None, retval=None, st
     @kwargs: The tasks keyword arguments
     @retval: The return value of the task
     @state: Name of the resulting state'''
-
-    # Force buffer flush to mongo (child process sleeps between tasks)
-    from app.lib.mongo_logger import BufferedMongoHandler as DBHandler
-
-    for handler in logging.getLogger('app').handlers:
-        if isinstance(handler, DBHandler) and handler.buf_flush_tim:
-            if not handler.test_connection():
-                handler._connect()
-            handler.flush_to_mongo()
 
     task_name = sender.name.split('.')[-1]
     print 'COMPLETED TASK %s' % task_name

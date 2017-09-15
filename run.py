@@ -40,10 +40,10 @@ def main(argv):
     app.logger.debug('Starting server...')
 
     set_environ(app)
-    #workers.kill()
-    #time.sleep(1)
-    #workers.start(beat=bool(environ.get('BEAT')))
-    #time.sleep(1)
+    workers.kill()
+    time.sleep(1)
+    workers.start(beat=bool(environ.get('BEAT')))
+    time.sleep(1)
     startup_msg(app, show_celery=False)
 
     app.logger.info("Server ready @%s", app.config['LOCAL_URL'])

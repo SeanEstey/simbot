@@ -21,7 +21,7 @@ def start(beat=True):
     '''
 
     if not beat:
-        environ['BRV_BEAT'] = 'False'
+        environ['BEAT'] = 'False'
     else:
         print 'Starting celery beat daemon...'
         system('celery -A app.tasks.celery beat -f logs/celery_beat.log -l INFO &')
