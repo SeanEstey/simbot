@@ -5,7 +5,7 @@ from celery import Celery
 
 # GLOBALS
 celery = Celery(__name__, broker='amqp://')
-from uber_task import UberTask
+from app.uber_task import UberTask
 celery.Task = UberTask
 
 # CLASSES

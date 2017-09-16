@@ -75,7 +75,7 @@
     top: 1px;
 }
 
-.json-container li .collapsed ~ .close:before {
+.json-container li .collapsed ~ .closed:before {
     content: "... ";
     color: #999;
 }

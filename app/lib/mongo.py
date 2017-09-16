@@ -8,7 +8,7 @@ import config
 #-------------------------------------------------------------------------------
 def create_client(host=None, port=None, connect=True, auth=True):
 
-    print 'CREATING MONGOCLIENT. PID %s' % os.getpid()
+    print('CREATING MONGOCLIENT. PID %s', os.getpid())
 
     client = pymongo.MongoClient(
         host = host or config.MONGO_URL,
@@ -30,7 +30,7 @@ def authenticate(client, user=None, pw=None):
             pw or db_auth.password,
             mechanism='SCRAM-SHA-1')
     except Exception as e:
-        print 'Mongo authentication error: %s' % str(e)
+        print('Mongo authentication error: %s', str(e))
         raise
 
     #print 'MongoClient authenticated'

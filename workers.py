@@ -11,7 +11,7 @@ def kill():
            "awk '{print $2}' |"\
            "sudo xargs kill -9")
 
-    print 'Celery workers killed'
+    print('Celery workers killed')
 
 #-------------------------------------------------------------------------------
 def start(beat=True):
@@ -23,10 +23,10 @@ def start(beat=True):
     if not beat:
         environ['BEAT'] = 'False'
     else:
-        print 'Starting celery beat daemon...'
+        print('Starting celery beat daemon...')
         system('celery -A app.tasks.celery beat -f logs/celery_beat.log -l INFO &')
 
-    print 'Starting celery workers...'
+    print('Starting celery workers...')
     system('celery -A app.tasks.celery -n simbot worker -f logs/celery_worker.log -Ofair &') # -l WARNING -Ofair &')
 
 #-------------------------------------------------------------------------------

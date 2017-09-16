@@ -14,8 +14,6 @@ php7.0-mbstring
 rabbitmq-server
 nginx
 logrotate
-nodejs
-npm
 
 ### Install & Config MongoDB 3.2 ###
 # Install: 

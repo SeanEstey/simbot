@@ -11,6 +11,6 @@ worker_concurrency = 1
 beat_schedule = {
     'update_books': {
         'task':'app.main.tasks.update_books',
-        'schedule': crontab(minute='*/5')
+        'schedule': crontab(minute='*/1')
     }
 }

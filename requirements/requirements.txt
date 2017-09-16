@@ -5,22 +5,23 @@
 # $ pip install -r requirements.txt
 
 ### Packages ###
-amqp==2.1.4
-celery==4.0.2
-cryptography==1.2.3
-eventlet==0.20.1
-Flask==0.12
-Flask-SocketIO==2.8.2
-httplib2==0.10.3
-ipaddress==1.0.18
-Jinja2==2.9.5
-matplotlib==1.5.2
-numpy==1.11.1
-oauth2client==4.0.0
+amqp
+celery
+cryptography
+eventlet
+Flask
+gdax
+httplib2
+ipaddress
+Jinja2
+matplotlib
+numpy
+oauth2client
 pymongo==3.3.0
-python-dateutil==2.4.2
-pyopenssl==0.15.1
-pytz==2017.2
-requests==2.17.3
-urllib3==1.21.1
-Werkzeug==0.11.15
+python-dateutil
+pyopenssl
+pytz
+requests
+urllib3
+websocket-client
+Werkzeug

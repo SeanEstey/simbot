@@ -19,7 +19,7 @@ def _data_get():
 
     tickers = g.db['ticker'].find_one(
         {"source" : "Canadian Bitcoin Index"})
-    books = g.db['books'].find_one(
+    books = g.db['order_books'].find_one(
         {'book.name':'btc_cad', 'exchange':'QuadrigaCX'})
 
     for i in range(len(tickers['exchanges'])):

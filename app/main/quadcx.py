@@ -1,62 +1,17 @@
-# quadrigacx.py
-
+# app.main.cbix
 import json
-import logging
 import requests
-from pprint import pprint
+from logging import getLogger
 from flask import g
-import numpy as np
 from app.lib.timer import Timer
-log = logging.getLogger(__name__)
-
-from config import CBIX, QUADCX
+log = getLogger(__name__)
 
 #-------------------------------------------------------------------------------
-def cbix():
-
-        try:
-            r = requests.get(CBIX['url'])
-        except Exception as e:
-            log.exception('Failed to get Quadriga ticker book: %s', str(e))
-            raise
-        else:
-            data = json.loads(r.text)
-
-        low = high = data['exchanges'][0]
-
-        for i in range(len(data['exchanges'])):
-            exch = data['exchanges'][i]
-            exch.update({
-                'ask':float(exch['ask']),
-                'bid':float(exch['bid']),
-                'last':float(exch['last'])
-            })
-            if exch['last'] > high['last']:
-                high = exch
-            elif exch['last'] < low['last']:
-                low = exch
-
-        data['spread'] = {
-            'high':high['last'],
-            'low':low['last'],
-            'diff': high['last']-low['last']
-        }
-
-        r = g.db['ticker'].update_one(
-            {'source':data['source']},
-            {'$set':data},
-            True
-        )
-
-        log.info('%s tickers updated, spread=%s',
-            len(data['exchanges']), data['spread']['diff'])
-
-
-#-------------------------------------------------------------------------------
-def quadcx_ticker():
+def ticker():
     """Ticker JSON dict w/ keys: ['last','high','low','vwap','volume','bid','ask']
     """
 
+    from config import QUADCX
     t1 = Timer()
     books = QUADCX['books']
     for i in range(len(books)):
@@ -89,10 +44,11 @@ def quadcx_ticker():
         t1.restart()
 
 #-------------------------------------------------------------------------------
-def quadcx_books():
+def order_books():
     """Save recent orderbook to DB
     """
 
+    from config import QUADCX
     t1 = Timer()
     books = QUADCX['books']
 
@@ -114,8 +70,8 @@ def quadcx_books():
                 'exchange': QUADCX['name'],
                 'book': book,
                 'timestamp': int(orders['timestamp']),
-                'bids': np.array(orders['bids']).tolist(),
-                'asks': np.array(orders['asks']).tolist()
+                'bids': [ [ float(x[0]), float(x[1]) ] for x in orders['bids']],
+                'asks': [ [ float(x[0]), float(x[1]) ] for x in orders['asks']]
             }},
             True)
 

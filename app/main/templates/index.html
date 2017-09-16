@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block head %}
+  <link href="{{url_for("static", filename="main/css/lib/json-viewer.css")}}" rel= "stylesheet" type= "text/css">
+  <script type="text/javascript" src="{{url_for("static", filename="main/js/book.js")}}"></script>
+  <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/json-viewer.js")}}"></script>
+  <script> jQuery(function($){init()})</script>
+{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-center m-5">
+    <h3 id="title">Simbot</h3>
+  </div>
+  <div class="d-flex">
+    <table class="table m-3" style="width:50%">
+      <thead class="thead-inverse">
+        <tr>
+          <th>Exchange</th>
+          <th>Last </th>
+          <th>Bid</th>
+          <th>Ask</th><th># Bids</th>
+          <th># Asks</th><th>Bid Orders</th>
+          <th>Ask Orders</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td id="name">QuadrigaCX</td>
+          <td>
+            <span id="last">$4711.01</span>
+          </td>
+          <td>
+            <span id="bid">$4700</span>  
+          </td>
+          <td>
+            <span id="ask">$4711.01</span>
+          </td>
+          <td>
+            <span id="n-quadcx-bids">62</span>
+          </td>
+          <td>
+            <span id="n-quadcx-asks">66</span>
+          </td>
+          <td>
+            <div id="quadcx-bids"></div>
+          </td>
+          <td>
+            <div id="quadcx-asks"></div>
+          </td>
+          <td>
+            <div name='updated'><small>1 min ago</small></div>
+          </td>
+        </tr>
+        <tr>
+          <td id="name">Kraken</td>
+          <td>
+            <span id="last">$4750</span>
+          </td>
+          <td>
+            <span id="bid">$4715</span>  
+          </td>
+          <td>
+            <span id="ask">$4750</span>
+          </td>
+          <td>
+            <span id="n-quadcx-bids">63</span>
+          </td>
+          <td>
+            <span id="n-quadcx-asks">63</span>
+          </td>
+          <td>
+            <div id="quadcx-bids"></div>
+          </td>
+          <td>
+            <div id="quadcx-asks"></div>
+          </td>
+          <td>
+            <div name='updated'><small>1 min ago</small></div>
+          </td>
+        </tr>
+        <tr>
+          <td id="name">Coindance.io</td>
+          <td>
+            <span id="last">$4750</span>
+          </td>
+          <td>
+            <span id="bid">$4715</span>  
+          </td>
+          <td>
+            <span id="ask">$4750</span>
+          </td>
+          <td>
+            <span id="n-quadcx-bids">63</span>
+          </td>
+          <td>
+            <span id="n-quadcx-asks">63</span>
+          </td>
+          <td>
+            <div id="quadcx-bids"></div>
+          </td>
+          <td>
+            <div id="quadcx-asks"></div>
+          </td>
+          <td>
+            <div name='updated'><small>1 min ago</small></div>
+          </td>
+        </tr>
+        <tr>
+          <td id="name">Coinbase</td>
+          <td>
+            <span id="last">$4750</span>
+          </td>
+          <td>
+            <span id="bid">$4715</span>  
+          </td>
+          <td>
+            <span id="ask">$4750</span>
+          </td>
+          <td>
+            <span id="n-quadcx-bids">63</span>
+          </td>
+          <td>
+            <span id="n-quadcx-asks">63</span>
+          </td>
+          <td>
+            <div id="quadcx-bids"></div>
+          </td>
+          <td>
+            <div id="quadcx-asks"></div>
+          </td>
+          <td>
+            <div name='updated'><small>1 min ago</small></div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table class="table m-3" style="width:33%">
+      <thead class="thead-inverse">
+        <tr>
+          <th>Trades</th>
+          <th>CAD</th>
+          <th>BTC</th>
+          <th>Profit</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td><td>1</td><td>1</td><td>1</td><td>1</td>
+        </tr>
+        <tr>
+          <td>314.00</td><td>314.00</td><td>314.00</td><td>314.00</td><td>314.00</td>
+        </tr>
+        <tr>
+          <td>0.7833</td><td>0.7833</td><td>0.7833</td><td>0.7833</td><td>0.7833</td>
+        </tr>
+        <tr>
+          <td>+78.10</td><td>+78.10</td><td>+78.10</td><td>+78.10</td><td>+78.10</td>
+        </tr>
+        <tr>
+          <td><small>30 sec ago</small></td><td><small>30 sec ago</small></td><td><small>30 sec ago</small></td><td><small>30 sec ago</small></td><td><small>30 sec ago</small></td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+{% endblock %}

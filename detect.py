@@ -43,7 +43,7 @@ def startup_msg(app, show_celery=False):
     "   flask v%s\n" % flsk_v +\
     "   debug mode %s\n" % debug
 
-    print msg + ENDC
+    print( msg + ENDC)
     mem = mem_check()
 
     if not show_celery:
@@ -79,7 +79,7 @@ def startup_msg(app, show_celery=False):
     "%s-------------------------------- %s  > tasks:   %s, %s\n"%(G,G,regist,sched) +\
     ""
 
-    print celery_msg + ENDC
+    print(celery_msg + ENDC)
     mem = mem_check()
 
 #-------------------------------------------------------------------------------
