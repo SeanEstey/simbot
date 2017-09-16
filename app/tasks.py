@@ -7,7 +7,7 @@ from celery.signals import worker_process_init, worker_ready, worker_shutdown
 from celery.signals import celeryd_init, celeryd_after_setup
 from app import create_app, celery
 from app.lib.mongo import create_client, authenticate
-from uber_task import UberTask
+from app.uber_task import UberTask
 import celeryconfig
 
 # Pre-fork vars
@@ -18,22 +18,22 @@ celery.Task = UberTask
 
 @celeryd_init.connect
 def _celeryd_init(**kwargs):
-    print 'CELERYD_INIT'
+    print('CELERYD_INIT')
 
 @celeryd_after_setup.connect
 def _celeryd_after_setup(sender, instance, **kwargs):
-    print 'CELERYD_AFTER_SETUP'
+    print('CELERYD_AFTER_SETUP')
 
 @worker_ready.connect
 def parent_ready(**kwargs):
     '''Called by parent worker process'''
 
-    print 'WORKER_READY. PID %s' % os.getpid()
+    print('WORKER_READY. PID %s' % os.getpid())
 
 @worker_shutdown.connect
 def parent_shutdown(**kwargs):
 
-    print 'WORKER_SHUTTING_DOWN'
+    print('WORKER_SHUTTING_DOWN')
 
 @worker_process_init.connect
 def child_init(**kwargs):
@@ -48,14 +48,14 @@ def child_init(**kwargs):
     logger = logging.getLogger('app')
     logger.setLevel(logging.DEBUG)
 
-    print 'WORKER_CHILD_INIT. PID %s' % os.getpid()
+    print('WORKER_CHILD_INIT. PID %s' % os.getpid())
 
 @task_prerun.connect
 def task_init(signal=None, sender=None, task_id=None, task=None, *args, **kwargs):
     '''Dispatched before a task is executed by Task obj. Sender == Task.
     @args, @kwargs: the tasks positional and keyword arguments'''
 
-    print 'RECEIVED TASK %s' % sender.name.split('.')[-1]
+    print('RECEIVED TASK %s' % sender.name.split('.')[-1])
 
 @task_postrun.connect
 def task_done(signal=None, sender=None, task_id=None, task=None, retval=None, state=None, *args, **kwargs):
@@ -69,7 +69,7 @@ def task_done(signal=None, sender=None, task_id=None, task=None, retval=None, st
     @state: Name of the resulting state'''
 
     task_name = sender.name.split('.')[-1]
-    print 'COMPLETED TASK %s' % task_name
+    print('COMPLETED TASK %s' % task_name)
 
 @task_failure.connect
 def task_failed(signal=None, sender=None, task_id=None, exception=None, traceback=None, einfo=None, *args, **kwargs):
@@ -95,4 +95,4 @@ def task_killed(sender=None, task_id=None, request=None, terminated=None, signum
     str_req = obj_vars(request)
     name = sender.name.split('.')[-1]
     app.logger.warning('Task %s revoked', name, extra={'request':str_req})
-    print 'TASK_REVOKED. NAME %s' % name
+    print('TASK_REVOKED. NAME %s' % name)

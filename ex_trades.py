@@ -51,9 +51,11 @@ def connect(endpoint):
 
 def on_message(ws, message):
     trade = json.loads(message)
-    print(trade)
     trade['date'] = parse(trade['date'])
     db['trades'].insert_one(trade)
+
+    print('ex:%s, price:$%s, volume:%s, value:$%s' %(
+        trade['exchange'], trade['price'], trade['volume'], trade['value']))
 
 def on_error(ws, error):
     print(error)

@@ -6,10 +6,10 @@ def kill():
     '''Kill any existing worker/beat processes, start new worker
     '''
 
-    system("ps aux | "\
-           "grep '/usr/bin/python /usr/local/bin/celery' | "\
-           "awk '{print $2}' |"\
-           "sudo xargs kill -9")
+    cel_cmd = "ps aux | grep '/usr/bin/python /usr/local/bin/celery' | awk '{print $2}' | sudo xargs kill -9"
+    cel_d_cmd = "auxww | grep celeryd | awk '{print $2}' | xargs kill -9"
+
+    system(cel_d_cmd)
 
     print('Celery workers killed')
 

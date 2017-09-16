@@ -47,15 +47,13 @@ def obj_vars(obj, depth=0, ignore=None, l="    "):
         try:
             if canprint(obj) or sum(not canprint(o) for o in obj) == 0:
                 return repr(obj)
-        except TypeError, e:
+        except TypeError as e:
             pass
 
         # Try to iterate as if obj were a list
-
         try:
-			return "[\n" + "\n".join(l + obj_vars(
-				k, depth=depth-1, l=l+"  ") + "," for k in obj) + "\n" + l + "]"
-        except TypeError, e:
+            return "[\n" + "\n".join(l + obj_vars(k, depth=depth-1, l=l+"  ") + "," for k in obj) + "\n" + l + "]"
+        except TypeError as e:
             #else, expand/recurse object attribs
 
             objdict = {}
@@ -68,7 +66,7 @@ def obj_vars(obj, depth=0, ignore=None, l="    "):
                 if a[:2] != "__" and (not hasattr(obj, a) or \
                 not hasattr(getattr(obj, a), '__call__')):
                     try: objdict[a] = getattr(obj, a)
-                    except Exception, e:
+                    except Exception as e:
                         objdict[a] = str(e)
 
     if ignore:
@@ -116,9 +114,14 @@ def mem_check():
 
     import psutil
     mem = psutil.virtual_memory()
-    mem_dict = mem.__dict__
-    for k in mem_dict:
-        mem_dict[k] = mem_dict[k] / 1000000
+
+    fields = list(mem._fields)
+    values = list(mem)
+    mem_dict = {}
+
+    for i in range(len(fields)):
+        mem_dict[fields[i]] = values[i] / 1000000
+
     return mem_dict
 
 #-------------------------------------------------------------------------------
