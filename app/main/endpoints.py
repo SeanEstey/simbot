@@ -19,3 +19,10 @@ def get_orders():
 def get_trades():
     trades = list(g.db['trades'].find()).limit(100).sort('date',-1)
     return dumps(trades)
+
+@main.route('/update', methods=['POST'])
+def update_bots():
+    from . import simbot
+    simbot.update()
+    simbot.summary()
+    return 'OK'

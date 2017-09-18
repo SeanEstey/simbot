@@ -59,8 +59,8 @@ def summary(name=None):
         total_value = round(bot['balance']['dollars'] + btc_value, 2)
         earnings = round(total_value - bot['start_balance']['dollars'], 2)
 
-        log.info('%s Net=$%s, Earnings=$%s, CAD=$%s, BTC=%s, nTrades=%s',
-            bot['name'].title(), total_value, earnings, round(bot['balance']['dollars'],2),
+        log.info('%s Earnings=$%s, CAD=$%s, BTC=%s, nTrades=%s',
+            bot['name'].title(), earnings, round(bot['balance']['dollars'],2),
             round(bot['balance']['coins'],5), len(bot['trades']))
 
 #-------------------------------------------------------------------------------
@@ -70,13 +70,15 @@ def make_trade(bot_id, order_type, tx_id):
     bot = g.db['bots'].find_one({'_id':bot_id})
 
     # TODO: check for necessary balance
+    sell_fee = 0.995
+    buy_fee = 1.005
 
     if order_type == 'BUY':
         bot['balance']['coins'] += trade['volume']
-        bot['balance']['dollars'] -= trade['value']
+        bot['balance']['dollars'] -= trade['value']*buy_fee
     else:
         bot['balance']['coins'] -= trade['volume']
-        bot['balance']['dollars'] += trade['value']
+        bot['balance']['dollars'] += trade['value']*sell_fee
 
     g.db['bots'].update_one(
         {'_id':bot_id},
@@ -85,7 +87,7 @@ def make_trade(bot_id, order_type, tx_id):
     # Mark trade as owned by bot
     g.db['trades'].update_one({'_id':trade['_id']},{'$set':{'bot':bot['name']}})
 
-    log.info('%s order, %s BTC, $%s CAD, price=$%s CAD',
+    log.info('%s order: BTC=%s for CAD=$%s @ $%s CAD',
         order_type, trade['volume'], trade['value'], trade['price'])
 
 #-------------------------------------------------------------------------------
@@ -96,6 +98,8 @@ def update(name=None):
 
     bots = [g.db['bots'].find_one({'name':name})] if name else list(g.db['bots'].find())
     ex_trade = list(g.db['trades'].find({}).limit(1).sort('date',-1))[0]
+
+    fee = 0.005
 
     for bot in bots:
 
@@ -117,19 +121,27 @@ def update(name=None):
         rules = bot['rules']
 
         if ex_trade['price'] > (bot_trade['price'] + rules['sell_margin']):
-            if ex_trade['volume'] <= bot['balance']['coins']:
-                make_trade(
-                    bot['_id'],
-                    'SELL',
-                    ex_trade['transaction_id'])
+            if ex_trade['value']*fee < rules['sell_margin']:
+                if ex_trade['volume'] <= bot['balance']['coins']:
+                    make_trade(
+                        bot['_id'],
+                        'SELL',
+                        ex_trade['transaction_id'])
+            else:
+                log.debug('trade cost=%s > sell_margin=%s',
+                    ex_trade['value']*fee, rules['sell_margin'])
         else:
             log.debug('sell price too low')
 
         if ex_trade['price'] < (bot_trade['price'] + rules['buy_margin']):
-            if bot['balance']['dollars'] >= ex_trade['value']:
-                make_trade(
-                    bot['_id'],
-                    'BUY',
-                    ex_trade['transaction_id'])
+            if ex_trade['value']*fee < rules['buy_margin']*-1:
+                if bot['balance']['dollars'] >= ex_trade['value']:
+                    make_trade(
+                        bot['_id'],
+                        'BUY',
+                        ex_trade['transaction_id'])
+            else:
+                log.debug('trade cost=%s > buy_margin=%s',
+                    ex_trade['value']*fee, rules['buy_margin']*-1)
         else:
             log.debug('buy price too high')

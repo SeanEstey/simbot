@@ -18,6 +18,7 @@ import pymongo
 import json
 import websocket
 import itertools
+import requests
 
 spinner = itertools.cycle(['-', '/', '|', '\\'])
 client = pymongo.MongoClient(
@@ -56,6 +57,11 @@ def on_message(ws, message):
 
     print('ex:%s, price:$%s, volume:%s, value:$%s' %(
         trade['exchange'], trade['price'], trade['volume'], trade['value']))
+
+    try:
+        requests.post('http://45.79.176.125/update')
+    except Exception as e:
+        print('request err')
 
 def on_error(ws, error):
     print(error)
