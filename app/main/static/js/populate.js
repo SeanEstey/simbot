@@ -1,11 +1,34 @@
-/* book.js */
+/* populate.js */
 
 base_url = "http://45.79.176.125";
 
 //------------------------------------------------------------------------------
 function init() {
 
-    api_call('/data/get', null, function(response){
+    api_call('/tickers', null, function(response){
+        var tickers = JSON.parse(response);
+        console.log(tickers);
+    });
+    
+    api_call('/orders', null, function(response){
+        var orders = JSON.parse(response);
+        console.log(orders);
+
+        // Insert into orders table
+    });
+    
+    api_call('/trades', null, function(response){
+        var trades = JSON.parse(response);
+        console.log(trades);
+        
+        for(var i=0; i<trades.length; i++) {
+            // Build trades datatable
+        
+        }
+        // Insert into trades table
+    });
+
+    /*api_call('/data/get', null, function(response){
         response = JSON.parse(response);
         console.log(response);
         $('#title').text('Simbot');
@@ -27,8 +50,7 @@ function init() {
             $('#quadcx-asks').jsonview(ex['orders']['asks']);
             $('#quadcx-asks .expanded').first().trigger('click');
         }
-
-    });
+    });*/
 }
 
 //------------------------------------------------------------------------------

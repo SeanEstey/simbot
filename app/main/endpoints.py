@@ -1,31 +1,21 @@
 # app.main.endpoints
-
 from bson.json_util import dumps
 import logging, pprint
 from flask import g
 log = logging.getLogger(__name__)
-from . import main # Blueprint
+from . import main
 
-@main.route('/tickers/get', methods=['POST'])
-def _tickers_get():
-
-    from .quadrigacx import update_orderbooks
-    update_orderbooks()
-    return 'ok'
-
-#-------------------------------------------------------------------------------
-@main.route('/data/get', methods=['POST'])
-def _data_get():
-
-    tickers = g.db['ticker'].find_one(
-        {"source" : "Canadian Bitcoin Index"})
-    books = g.db['order_books'].find_one(
-        {'book.name':'btc_cad', 'exchange':'QuadrigaCX'})
-
-    for i in range(len(tickers['exchanges'])):
-        exch = tickers['exchanges'][i]
-        if exch['name'] == 'QuadrigaCX':
-            exch['orders'] = books
-            break
-
+@main.route('/tickers', methods=['POST'])
+def get_tickers():
+    tickers = list(g.db['tickers'].find())
     return dumps(tickers)
+
+@main.route('/orders', methods=['POST'])
+def get_orders():
+    orders = list(g.db['orders'].find()).limit(100).sort('date',-1)
+    return dumps(orders)
+
+@main.route('/trades', methods=['POST'])
+def get_trades():
+    trades = list(g.db['trades'].find()).limit(100).sort('date',-1)
+    return dumps(trades)

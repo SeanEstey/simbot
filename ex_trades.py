@@ -69,11 +69,13 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 def update_spinner():
-    sys.stdout.write(next(spinner))
+    msg = 'listening %s' % next(spinner)
+    sys.stdout.write(msg)
     sys.stdout.flush()
-    sys.stdout.write('\b')
+    sys.stdout.write('\b'*len(msg))
     sleep(1)
 
 if __name__ == "__main__":
+    # Get endpoint subscription list
     endpoint = sys.argv[1]
     connect(endpoint)
