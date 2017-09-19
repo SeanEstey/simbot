@@ -28,15 +28,17 @@ client = pymongo.MongoClient(
     connect=True)
 db = client['simbot']
 
-def connect(endpoint):
+def connect(endpoints):
     websocket.enableTrace(True)
-    ws = websocket.WebSocketApp(endpoint,
-        on_message = on_message,
-        on_error = on_error,
-        on_close = on_close)
-    wst = threading.Thread(target=ws.run_forever)
-    wst.daemon = True
-    wst.start()
+
+    for endpoint in endpoints:
+        ws = websocket.WebSocketApp(endpoint,
+            on_message = on_message,
+            on_error = on_error,
+            on_close = on_close)
+        wst = threading.Thread(target=ws.run_forever)
+        wst.daemon = True
+        wst.start()
 
     sleep(1)
     conn_timeout = 180
@@ -51,17 +53,27 @@ def connect(endpoint):
         update_spinner()
 
 def on_message(ws, message):
-    trade = json.loads(message)
-    trade['date'] = parse(trade['date'])
-    db['trades'].insert_one(trade)
+    data = json.loads(message)
 
-    print('ex:%s, price:$%s, volume:%s, value:$%s' %(
-        trade['exchange'], trade['price'], trade['volume'], trade['value']))
+    # Orderbook
+    if 'asks' in data:
+        db['orders'].remove({})
+        db['orders'].insert_one({'asks':data['asks']})
+        db['orders'].insert_one({'bids':data['bids']})
+        #print('addded %s asks, %s bids' %(len(data['asks']),len(data['bids'])))
+    # Trade
+    elif 'transaction_id' in data:
+        data['date'] = parse(data['date'])
+        r = db['trades'].insert_one(data)
+        print('ex:%s, price:$%s, volume:%s, value:$%s' %(
+            data['exchange'], data['price'], data['volume'], data['value']))
 
-    try:
-        requests.post('http://45.79.176.125/update')
-    except Exception as e:
-        print('request err')
+        try:
+            requests.post(
+                'http://45.79.176.125/trade/process',
+                data={'trade_id':str(r.inserted_id)})
+        except Exception as e:
+            print('request err')
 
 def on_error(ws, error):
     print(error)
@@ -83,5 +95,6 @@ def update_spinner():
 
 if __name__ == "__main__":
     # Get endpoint subscription list
-    endpoint = sys.argv[1]
-    connect(endpoint)
+    #endpoint = sys.argv[1:]
+    print('%s endpoints...' % len(sys.argv[1:]))
+    connect(sys.argv[1:])

@@ -1,9 +1,10 @@
 # app.main.endpoints
 from bson.json_util import dumps
 import logging, pprint
-from flask import g
+from flask import g, request
 log = logging.getLogger(__name__)
 from . import main
+from . import simbot
 
 @main.route('/tickers', methods=['POST'])
 def get_tickers():
@@ -20,9 +21,7 @@ def get_trades():
     trades = list(g.db['trades'].find()).limit(100).sort('date',-1)
     return dumps(trades)
 
-@main.route('/update', methods=['POST'])
-def update_bots():
-    from . import simbot
-    simbot.update()
-    simbot.summary()
+@main.route('/trade/process', methods=['POST'])
+def _process_trade():
+    simbot.process_trade(request.form.get('trade_id'))
     return 'OK'
