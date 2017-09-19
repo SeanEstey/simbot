@@ -1,17 +1,55 @@
 # app.main.cbix
 import json
 import requests
+from pprint import pprint
 from logging import getLogger
 from flask import g
 from app.lib.timer import Timer
 log = getLogger(__name__)
 
 #-------------------------------------------------------------------------------
+def update_books():
+    """Save recent orderbook to DB
+    """
+
+    t1 = Timer()
+    book_name = 'btc_cad'
+
+    try:
+        r = requests.get('https://api.quadrigacx.com/v2/order_book?book='+book_name)
+    except Exception as e:
+        log.exception('Failed to get Quadriga orderbook: %s', str(e))
+        raise
+    else:
+        orders = json.loads(r.text)
+
+    bids = [ { 'price':float(x[0]), 'volume':float(x[1]) } for x in orders['bids']]
+    asks = [ { 'price':float(x[0]), 'volume':float(x[1]) } for x in orders['asks']]
+    spread = round(asks[0]['price'] - bids[0]['price'], 2)
+
+    r = g.db['exchanges'].update_one(
+        {'name':'QuadrigaCX'},
+        {'$set':{
+            'name': 'QuadrigaCX',
+            'book': book_name,
+            'timestamp': int(orders['timestamp']),
+            'bids':bids,
+            'asks':asks,
+            'bid': bids[0]['price'],
+            'ask': asks[0]['price'],
+            'spread':spread
+        }},
+        True)
+
+    pprint('QuadrigaCX bid=%s, ask=%s, spread=%s [%sms]' %(
+        bids[0]['price'], asks[0]['price'], spread, t1.clock(t='ms')))
+
+#-------------------------------------------------------------------------------
 def ticker():
     """Ticker JSON dict w/ keys: ['last','high','low','vwap','volume','bid','ask']
     """
 
-    from config import QUADCX
+    url = 'https://api.quadrigacx.com/v2/ticker', # ?book=bname
     t1 = Timer()
     books = QUADCX['books']
     for i in range(len(books)):
@@ -41,40 +79,4 @@ def ticker():
 
         log.info('quadcx.%s ticker last=%s, bid=%s, ask=%s [%sms]',
             book['name'], data['last'], data['bid'], data['ask'], t1.clock(t='ms'))
-        t1.restart()
-
-#-------------------------------------------------------------------------------
-def order_books():
-    """Save recent orderbook to DB
-    """
-
-    from config import QUADCX
-    t1 = Timer()
-    books = QUADCX['books']
-
-    for i in range(len(books)):
-        book = books[i]
-
-        try:
-            r = requests.get('%s?book=%s' % (QUADCX['books_url'], book['name']))
-        except Exception as e:
-            log.exception('Failed to get Quadriga orderbook: %s', str(e))
-            raise
-        else:
-            orders = json.loads(r.text)
-
-        # Update/upsert orders
-        r = g.db['order_books'].update_one(
-            {'exchange':QUADCX['name'], 'book':book},
-            {'$set':{
-                'exchange': QUADCX['name'],
-                'book': book,
-                'timestamp': int(orders['timestamp']),
-                'bids': [ [ float(x[0]), float(x[1]) ] for x in orders['bids']],
-                'asks': [ [ float(x[0]), float(x[1]) ] for x in orders['asks']]
-            }},
-            True)
-
-        log.info('quadcx.%s book, bids=%s, asks=%s [%sms]',
-            book['name'], len(orders['bids']), len(orders['asks']), t1.clock(t='ms'))
         t1.restart()

@@ -9,12 +9,47 @@ log = getLogger(__name__)
 
 exchanges = ['ezBTC', 'Coinsquare', 'QuadrigaCX', 'Kraken']
 
+symbols = {
+    'DOWN_ARR': '\u2193',
+    'UP_ARR': '\u2191',
+    'DOWN_TRI': '\u25BF',
+    'UP_TRI': '\u25B5'
+}
+
+#-------------------------------------------------------------------------------
+def update():
+
+    bot = g.db['bots'].find_one({})
+
+    for name in ['Coinsquare', 'QuadrigaCX']:
+        exch = g.db['exchanges'].find_one({'name':name})
+        balance = get_balance(str(bot['_id']), name)
+
+        bid_eval = round(exch['bid'] - balance['last_buy'], 2)
+
+        if bid_eval >= bot['rules']['sell_margin']:
+            log.debug('%s P=%s$%s (SELL). Bid=$%s, Volume=%s. BTC balance=%s',
+                exch['name'], symbols['UP_ARR'], abs(bid_eval), exch['bids'][0]['price'],
+                exch['bids'][0]['volume'], balance['btc'])
+
+        ask_eval = round(exch['ask'] - balance['last_sell'], 2)
+
+        if ask_eval <= bot['rules']['buy_margin']:
+            log.debug('%s P=%s$%s (BUY). Ask=$%s, Volume=%s. CAD balance=$%s',
+                exch['name'], symbols['DOWN_ARR'], abs(ask_eval), exch['asks'][0]['price'],
+                exch['asks'][0]['volume'], round(balance['cad'],2))
+
+        """log.debug('%s bid=%s, bot_last_sell=%s, ask=%s, bot_last_buy=%s',
+            name, exch['bid'], balance['last_sell'], exch['ask'], balance['last_buy'])
+        log.debug('bid vs last_buy=%s (>30 good), ask vs last_sell=%s (<30 good)',
+            bid_eval, ask_eval)
+        """
+
 #-------------------------------------------------------------------------------
 def process_trade(trade_id):
     """update bots on new trade
     """
 
-    print('trade_id=%s'%trade_id)
     trade = g.db['trades'].find_one({'_id':ObjectId(trade_id)})
     bot = g.db['bots'].find_one({})
 
@@ -33,7 +68,7 @@ def process_trade(trade_id):
     else:
         last_trade_id = str(list(last)[0]['_id'])
         eval_local(str(bot['_id']), trade_id, last_trade_id)
-        eval_arbitrage(str(bot['_id']), trade_id)
+        #eval_arbitrage(str(bot['_id']), trade_id)
 
 #-------------------------------------------------------------------------------
 def eval_local(bot_id, trade_id, last_trade_id):
@@ -111,6 +146,14 @@ def make_trade(bot_id, order_type, trade_id):
         order_type, trade['exchange'], trade['volume'], trade['value'], trade['price'], trade_fee)
 
 #-------------------------------------------------------------------------------
+def market_order(bot_id, exchange, _type, amount):
+
+    """Iterate though order book, consuming orders until amount is bought/sold
+    """
+
+    pass
+
+#-------------------------------------------------------------------------------
 def create(name, cad):
 
     cad_each = round(cad/len(exchanges),2)
@@ -169,7 +212,7 @@ def summary(name=None):
     total_btc = 0
     total_btc_value = 0
     earnings = []
-    initial_exch_cad = bot['start_balance']['cad']/3
+    initial_exch_cad = bot['start_balance']['cad']/len(exchanges)
 
     for exchange in exchanges:
         balance = get_balance(str(bot['_id']), exchange)

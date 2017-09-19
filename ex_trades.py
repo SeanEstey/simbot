@@ -55,12 +55,11 @@ def connect(endpoints):
 def on_message(ws, message):
     data = json.loads(message)
 
-    # Orderbook
+    # Orderbook index. Not exchange-specific, so not very useful
     if 'asks' in data:
         db['orders'].remove({})
         db['orders'].insert_one({'asks':data['asks']})
         db['orders'].insert_one({'bids':data['bids']})
-        #print('addded %s asks, %s bids' %(len(data['asks']),len(data['bids'])))
     # Trade
     elif 'transaction_id' in data:
         data['date'] = parse(data['date'])
@@ -70,8 +69,8 @@ def on_message(ws, message):
 
         try:
             requests.post(
-                'http://45.79.176.125/trade/process',
-                data={'trade_id':str(r.inserted_id)})
+                'http://45.79.176.125/books/update',
+                data={'exchange':data['exchange']})
         except Exception as e:
             print('request err')
 
