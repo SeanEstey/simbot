@@ -67,12 +67,13 @@ def on_message(ws, message):
         print('ex:%s, price:$%s, volume:%s, value:$%s' %(
             data['exchange'], data['price'], data['volume'], data['value']))
 
-        try:
+        """try:
             requests.post(
                 'http://45.79.176.125/books/update',
                 data={'exchange':data['exchange']})
         except Exception as e:
             print('request err')
+        """
 
 def on_error(ws, error):
     print(error)

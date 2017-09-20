@@ -7,6 +7,10 @@ from flask import g
 from app.lib.timer import Timer
 log = getLogger(__name__)
 
+def update(book_name):
+    update_books(book_name)
+    update_info(book_name)
+
 #-------------------------------------------------------------------------------
 def update_books(book_name):
     """Save recent orderbook to DB
@@ -75,5 +79,5 @@ def update_info(book_name):
         True
     )
 
-    log.info('quadcx last=$%s, bid=$%s, ask=$%s [%sms]',
-        data['last'], data['bid'], data['ask'], t1.clock(t='ms'))
+    #log.info('quadcx last=$%s, bid=$%s, ask=$%s [%sms]',
+    #    data['last'], data['bid'], data['ask'], t1.clock(t='ms'))

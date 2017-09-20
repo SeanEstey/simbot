@@ -7,6 +7,10 @@ from flask import g
 from app.lib.timer import Timer
 log = getLogger(__name__)
 
+
+def update():
+    update_books()
+
 #-------------------------------------------------------------------------------
 def update_books():
     t1 = Timer()
