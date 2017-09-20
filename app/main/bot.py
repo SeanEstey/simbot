@@ -1,24 +1,55 @@
-"""app.main.SimBot
+"""Class: SimBot
 """
 import logging
+from flask import g
 from app.lib.timer import Timer
 from bson import ObjectId as oid
 log = logging.getLogger(__name__)
 
-# WRITEME
-def get_ticker(exch=None):
-    return g.db['tickers'].find({'name':exch}) if exch else g.db['tickers'].find()
+#-------------------------------------------------------------------------------
+def get_tickers(exch=None):
+    return [g.db['exchanges'].find_one({'name':exch})] if exch else list(g.db['exchanges'].find())
 
 #-------------------------------------------------------------------------------
-class SimBot():
+def create(name, start_cad, buy_margin, sell_margin):
+    tickers = get_tickers()
 
+    g.db['bots'].insert_one({
+        'name':name,
+        'start_balance': start_cad,
+        'rules': {
+            'buy_margin': buy_margin,
+            'sell_margin': sell_margin
+        }})
+
+    bot = SimBot(name)
+
+    for ticker in tickers:
+        bot.add_holding(ticker['name'], round(start_cad/len(tickers),2))
+
+    log.info('Created %s bot w/ $%s balance', name, start_cad)
+
+
+########################### Class: SimBot ##########################
+class SimBot():
     _id = None
-	name = None
+    name = None
     start_balance = None
     rules = None
 
     #---------------------------------------------------------------
-    def get_holdings(self, exch=None, status=None):
+    def add_holding(self, exch, cad):
+        g.db['holdings'].insert_one({
+            'bot_id':self._id,
+            'exchange':exch,
+            'status':'pending',
+            'btc_volume':0.00000,
+            'cad_balance':cad,
+            'trades':[]
+        })
+
+    #---------------------------------------------------------------
+    def holdings(self, exch=None, status=None):
         query = {'bot_id':self._id}
         if exch:
             query['exchange'] = exch
@@ -27,7 +58,46 @@ class SimBot():
         return list(g.db['holdings'].find(query))
 
     #---------------------------------------------------------------
-    def get_balance(self, exch=None):
+    def update_holding(self, exch, status, btc_vol, cad_bal, trades):
+        g.db['holdings'].update_one(
+            {'bot_id':self._id, 'exchange':exch},
+            {'$set': {
+                'status':status,
+                'btc_volume':btc_vol,
+                'cad_balance':cad_bal,
+                'trades':trades
+            }})
+
+    #---------------------------------------------------------------
+    def buy_order(self, exch, price, volume, cost):
+        # TODO: balance check
+        # TODO: handle eating through > 1 orders
+
+        holding = self.holdings(exch=exch)[0]
+        print(holding)
+
+        holding['trades'].append({
+            'type':'BUY',
+            'price':price,
+            'volume':volume,
+            'value':cost
+        })
+
+        self.update_holding(
+            exch,
+            'open',
+            holding['btc_volume'] + volume,
+            holding['cad_balance'] - cost,
+            holding['trades']
+        )
+
+    #---------------------------------------------------------------
+    def sell_order(self, exch, price, volume):
+
+        pass
+
+    #---------------------------------------------------------------
+    def balance(self, exch=None):
         """Returns dict: {'cad':float, 'btc':float}
         """
         query = {'bot_id':self._id}
@@ -42,38 +112,43 @@ class SimBot():
     #---------------------------------------------------------------
     def eval_bids(self):
         for ticker in get_tickers():
-            holdings = self.get_holdings(exch=ticker['exchange'], status='open')
-
-            log.debug('%s open holdings on %s', len(holdings), ticker['exchange')
-
             # Evaluate selling margins for each open holding
-            for holding in holdings:
-                buy_price = holding['trades'][0]['price']
-                bid = ticker['bid']
-                margin = bid - buy_price # round decimals?
+            _holdings = self.holdings(exch=ticker['name'], status='open')
+
+            log.debug('%s open holdings on %s', len(_holdings), ticker['name'])
+
+            for holding in _holdings:
+                # Get price diff from initial BUY
+                margin = ticker['bid'] - holding['trades'][0]['price']
 
                 if margin > self.rules['sell_margin']:
                     log.debug('Sell margin=%s, bid_vol=%s, hold_vol=%s',
                         margin, ticker['volume'], holding['btc_volume'])
 
+                    result = 'MAKE_SELL_ORDER'
+                else:
+                    log.debug('Sell margin=%s. Too low', margin)
+
     #---------------------------------------------------------------
     def eval_asks(self):
         for ticker in get_tickers():
-            balance = self.get_balance(exch=ticker['exchange'])
-
             # Examine our earnings position. If poor, only buy on fall
             # in 24hr market price
-
-            ask = ticker['ask']
-            log.debug('%s 24hr market change:%s', ticker['exchange'], ticker['price_24hour'])
+            #log.debug('%s 24hr market change:%s', ticker['name'], ticker['price_24hour'])
 
             if 'GOOD_BUY_OPPORTUNITY':
                 # Balance check
-                log.debug('Ask=%s, ask_vol=%s, cad_bal=%s',
-                    ask, ticker['volume'], balance['cad'])
+                _balance = self.balance(exch=ticker['name'])
+                ask = ticker['ask']
 
-                # Make buy order
-                order = 'MAKE_BUY_ORDER'
+                log.debug('Ask=%s, ask_vol=%s, cad_bal=%s',
+                    ask, ticker['volume'], _balance['cad'])
+
+                result = 'MAKE_BUY_ORDER'
+
+    #---------------------------------------------------------------
+    def eval_arbitrage(self):
+        pass
 
     #---------------------------------------------------------------
     def __init__(self, name):
@@ -84,32 +159,3 @@ class SimBot():
         self.rules = bot['rules']
         self.start_balance = bot['start_balance']
         self.name = name
-
-
-"""
-closed_holdings = [
-    {
-        'bot_id': odi("949j9kdkkld93"),
-        'exchange':'Coinsquare',
-        'status':'closed',
-        'btc_volume':0.00000,
-        'cad_balance':685.00,
-        'trades': [
-            {'type':'BUY', 'price':4500.00, 'volume':0.15000, 'value':675.00},
-            {'type':'SELL', 'price':4571.00, 'volume':0.15000, 'value':685.00}
-        ]
-    }
-]
-open_holdings = [
-    {
-        'bot_id': odi("949j9kdkkld93"),
-        'exchange':'QuadrigaCX',
-        'status':'open',
-        'btc_volume':1.39930,
-        'cad_balance':0,
-        'trades': [
-            {'type':'BUY', 'price':5000.00, 'volume':1.3993, 'value':6996.00}
-        ]
-    }
-]
-"""

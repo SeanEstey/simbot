@@ -9,7 +9,6 @@ log = getLogger(__name__)
 
 #-------------------------------------------------------------------------------
 def update_books():
-
     t1 = Timer()
 
     try:
@@ -24,11 +23,7 @@ def update_books():
         _bids = [_book[i] for i in range(len(_book)) if _book[i]['t'] == 's']
         del _bids[-1]
 
-    book = {
-        'exchange': 'Coinsquare',
-        'bids': [],
-        'asks': [],
-    }
+    book = {'name':'Coinsquare', 'bids':[], 'asks':[]}
 
     for ask in _asks:
         dollars = float(ask['amt'])/100
@@ -43,16 +38,20 @@ def update_books():
         book['bids'].append({'price':price, 'volume':volume})
 
     spread = round(book['asks'][0]['price'] - book['bids'][0]['price'], 2)
+    last = g.db['trades'].find({'exchange':'Coinsquare'}).sort('$natural',-1).limit(1)[0]['price']
+
+    # TODO: find 'high', 'low', 'volume', etc values somwhere
 
     g.db['exchanges'].update_one(
         {'name':'Coinsquare'},
         {'$set':{
             'name':'Coinsquare',
-            'bids':book['bids'],
-            'asks':book['asks'],
             'bid':book['bids'][0]['price'],
+            'last':last,
             'ask':book['asks'][0]['price'],
-            'spread':spread
+            'spread':spread,
+            'bids':book['bids'],
+            'asks':book['asks']
         }},
         True
     )

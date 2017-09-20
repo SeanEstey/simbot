@@ -9,5 +9,5 @@ from app.main import simbot
 #-------------------------------------------------------------------------------
 @celery.task(bind=True)
 def update_bots(self, **rest):
-    simbot.update()
-    simbot.summary()
+
+    pass

@@ -8,12 +8,10 @@ from app.lib.timer import Timer
 log = getLogger(__name__)
 
 #-------------------------------------------------------------------------------
-def update_books():
+def update_books(book_name):
     """Save recent orderbook to DB
     """
-
     t1 = Timer()
-    book_name = 'btc_cad'
 
     try:
         r = requests.get('https://api.quadrigacx.com/v2/order_book?book='+book_name)
@@ -31,7 +29,6 @@ def update_books():
         {'name':'QuadrigaCX'},
         {'$set':{
             'name': 'QuadrigaCX',
-            'book': book_name,
             'timestamp': int(orders['timestamp']),
             'bids':bids,
             'asks':asks,
@@ -45,38 +42,38 @@ def update_books():
         bids[0]['price'], asks[0]['price'], spread, t1.clock(t='ms')))
 
 #-------------------------------------------------------------------------------
-def ticker():
+def update_info(book_name):
     """Ticker JSON dict w/ keys: ['last','high','low','vwap','volume','bid','ask']
     """
-
-    url = 'https://api.quadrigacx.com/v2/ticker', # ?book=bname
     t1 = Timer()
-    books = QUADCX['books']
-    for i in range(len(books)):
-        data = {}
-        book = books[i]
 
-        try:
-            r = requests.get('%s?book=%s' % (QUADCX['ticker_url'], book['name']))
-        except Exception as e:
-            log.exception('Failed to get Quadriga ticker book: %s', str(e))
-            raise
-        else:
-            data = json.loads(r.text)
+    try:
+        r = requests.get('https://api.quadrigacx.com/v2/ticker?book=%s' % book_name)
+    except Exception as e:
+        log.exception('Failed to get Quadriga ticker book: %s', str(e))
+        raise
+    else:
+        data = json.loads(r.text)
 
-        for k in data:
-            data[k] = float(data[k])
-        data.update({
-            'exchange': QUADCX['name'],
-            'book':book
-        })
+    for k in data:
+        data[k] = float(data[k])
 
-        r = g.db['ticker'].update_one(
-            {'exchange':QUADCX['name'], 'book':book},
-            {'$set':data},
-            True
-        )
+    data.update({
+        'name': 'QuadrigaCX',
+    })
 
-        log.info('quadcx.%s ticker last=%s, bid=%s, ask=%s [%sms]',
-            book['name'], data['last'], data['bid'], data['ask'], t1.clock(t='ms'))
-        t1.restart()
+    last = g.db['trades'].find({'exchange':'QuadrigaCX'}).sort('$natural',-1).limit(1)[0]['price']
+
+    r = g.db['exchanges'].update_one(
+        {'name':'QuadrigaCX'},
+        {'$set':{
+            'volume':float(data['volume']),
+            'high':float(data['high']),
+            'low':float(data['low']),
+            'last':last
+        }},
+        True
+    )
+
+    log.info('quadcx last=$%s, bid=$%s, ask=$%s [%sms]',
+        data['last'], data['bid'], data['ask'], t1.clock(t='ms'))
