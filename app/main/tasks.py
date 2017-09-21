@@ -1,5 +1,6 @@
 # app.main.tasks
 import json, logging
+from pprint import pprint
 from app import celery
 from flask import g
 from app.lib.timer import Timer
@@ -10,11 +11,24 @@ from app.main import quadcx, coinsquare
 #-------------------------------------------------------------------------------
 @celery.task(bind=True)
 def update(self, **rest):
-    coinsquare.update()
-    quadcx.update('btc_cad')
 
+    # Update market data
+    quadcx.update('CAD','BTC')
+    quadcx.update('CAD','ETH')
+    coinsquare.update('CAD','BTC')
+
+    # Go Garybot!
     gary = SimBot('Gary')
-    n_sells = gary.eval_bids()
+    gary.eval_bids()
+    gary.eval_asks()
+
     balance = gary.balance()
-    log.info('Gary update: sells=%s, CAD=$%s, BTC=%s',
-        n_sells, round(balance['cad'],2), round(balance['btc'],5))
+    stats = gary.stats()
+
+    log.info(balance)
+    log.info(stats)
+
+    """log.info('Garybot earnings=$%s, cad=$%s, btc=%s, buys=%s, sells=%s, ',
+      round(stats['earnings'],2), round(balance['cad'],2), round(balance['btc'],5),
+        stats['n_buy_orders'], stats['n_sell_orders'])
+    """

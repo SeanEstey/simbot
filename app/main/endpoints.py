@@ -4,7 +4,7 @@ import logging, pprint
 from flask import g, request
 log = logging.getLogger(__name__)
 from . import main
-from . import quadcx, coinsquare, simbot
+from . import quadcx, coinsquare
 
 @main.route('/tickers/get', methods=['POST'])
 def get_tickers():

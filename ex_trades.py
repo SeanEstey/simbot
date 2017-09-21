@@ -55,25 +55,13 @@ def connect(endpoints):
 def on_message(ws, message):
     data = json.loads(message)
 
-    # Orderbook index. Not exchange-specific, so not very useful
-    if 'asks' in data:
-        db['orders'].remove({})
-        db['orders'].insert_one({'asks':data['asks']})
-        db['orders'].insert_one({'bids':data['bids']})
     # Trade
-    elif 'transaction_id' in data:
+    if 'transaction_id' in data:
+        data['currency'] = 'btc'
         data['date'] = parse(data['date'])
         r = db['trades'].insert_one(data)
         print('ex:%s, price:$%s, volume:%s, value:$%s' %(
             data['exchange'], data['price'], data['volume'], data['value']))
-
-        """try:
-            requests.post(
-                'http://45.79.176.125/books/update',
-                data={'exchange':data['exchange']})
-        except Exception as e:
-            print('request err')
-        """
 
 def on_error(ws, error):
     print(error)
