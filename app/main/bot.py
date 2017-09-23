@@ -214,6 +214,8 @@ class SimBot():
         earnings = (btc_val + eth_val + balance['cad']) - self.start_balance
         return {
             'cad': balance['cad'],
+            'btc': balance['btc'],
+            'eth': balance['eth'],
             'btc_value': btc_val,
             'eth_value': eth_val,
             'earnings': earnings

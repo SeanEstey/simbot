@@ -7,6 +7,11 @@ from . import main
 from . import quadcx, coinsquare
 from .bot import SimBot
 
+@main.route('/stats/get', methods=['POST'])
+def get_earnings():
+    gary = SimBot('Gary')
+    return dumps(gary.stats())
+
 @main.route('/holdings/get', methods=['POST'])
 def get_holdings():
     gary = SimBot('Gary')

@@ -21,9 +21,14 @@ thead tr th {
 	border-bottom: 1px solid whitesmoke;
 	background-color: whitesmoke!important;
 }
-#datatable_length label {
+#dt-holdings {
+    width:100%!important;
+    padding:0;
+    margin:0!important;
+}
+#dt-holdings_length label {
   margin-bottom:0;
 }
-#datatable_filter label {
+#dt-holdings_filter label {
   margin-bottom:0;
 }

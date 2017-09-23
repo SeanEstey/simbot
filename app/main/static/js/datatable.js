@@ -24,7 +24,7 @@ holdings_fields = [
     {
         column: { title:'Status' },
         columnDef:{ },
-        data: { k:'status' }
+        data: { k:'status', value:function(v){ return v.toTitleCase() } }
     },
     {
         column: { title:'Earnings' },
@@ -34,12 +34,7 @@ holdings_fields = [
     {
         column: { title:'Currency' },
         columnDef: { },
-        data: { k:'currency' }
-    },
-    {
-        column: { title:'Buy Price' },
-        columnDef: { },
-        data: { k:'trades', sub_k:'0', value:function(v){ return '$'+num_format(v['price'],0) } }
+        data: { k:'currency', value:function(v){ return v.toUpperCase() } }
     },
     {
         column: { title:'BTC' },
@@ -50,69 +45,57 @@ holdings_fields = [
         column: { title:'ETH' },
         columnDef: { },
         data: { k:'eth' }
+    },
+    {
+        column: { title:'Buy Price' },
+        columnDef: { },
+        data: { k:'trades', sub_k:'0', value:function(v){ return '$'+num_format(v['price'],0) } }
+    },
+    {
+        column: { title:'Sell Price' },
+        columnDef: { },
+        data: { k:'trades', value:function(v){ return '$'+num_format(v[v.length-1]['price'],0) } }
     }
 ];
 
 //------------------------------------------------------------------------------
 function init() {
     
-    initDatatable(holdings_tbl_id);
-
-    /*api_call('/holdings/get', null, function(response){
-        var holdings = JSON.parse(response);
-        initDatatable(holdings_tbl_id);
-        console.log(holdings);
+    api_call('/stats/get', null, function(response){
+        var stats = JSON.parse(response);
+        var html = '';
+        for(var k in stats) {
+            html += k.toTitleCase() + " : " + num_format(stats[k],2);
+            html += '<br>';
+        }
+        $('#stats').html(html);
+        /*
+            'cad': balance['cad'],
+            'btc': balance['btc'],
+            'eth': balance['eth'],
+            'btc_value': btc_val,
+            'eth_value': eth_val,
+            'earnings': earnings
+        */
     });
-
-    api_call('/bots/get', null, function(response){
-        //initDatatable(bots_tbl_id);
-    });*/
 
     api_call('/tickers/get', null, function(response){
         var tickers = JSON.parse(response);
         console.log(tickers);
     });
-}
-
-//------------------------------------------------------------------------------
-function api_call(path, data, on_done) {
-    
-    $.ajax(
-        { type:'POST', data:data, url:base_url + path }
-    )
-    .done(function(response){
-        on_done(response);
-    })
-    .fail(function(response){
-        on_done(response)
-    });
-}
-
-//------------------------------------------------------------------------------
-function initDatatable(_id) {
 
     api_call(
       '/holdings/get',
       data=null,
       function(response){
-          raw_data = JSON.parse(response); //response['data'];
+          raw_data = JSON.parse(response);
 
           buildDataTable(
-            _id,
+            holdings_tbl_id,
             holdings_fields.map(function(x){ return x.column }),
-            formatData(raw_data) //filterDates(new Date().clearTime(), null))
-          );
+            formatData(raw_data));
 
-          // Fix stylings
-          var wrapper_id = '#'+holdings_tbl_id+'_wrapper';
-          $(wrapper_id).css('background-color', 'whitesmoke');
-          $(wrapper_id).css('border-top-right-radius', '5px');
-          $(wrapper_id + ' .row').first().css('padding', '15px');
-          $(wrapper_id + ' .row').first().css('border-bottom', '1px solid rgba(0,0,0,0.12)');
-          $(wrapper_id + ' .row').last().css('padding', '.5rem 1.0rem');
-          $(wrapper_id + ' .row').last().css('border-top', '1px solid rgba(0,0,0,.12)');
-          $(wrapper_id).parent().css('background-color','white');
-          $(wrapper_id).css('border','none');
+          applyCss(holdings_tbl_id);
       });
 
     // Event handlers
@@ -125,6 +108,71 @@ function initDatatable(_id) {
         else if(id == '#historic')
             showHistoric();
     });
+}
+
+//------------------------------------------------------------------------------
+function buildDataTable(id, columns, data ) {
+
+    datatable = $('#'+id).removeAttr('width').DataTable({
+        data: data,
+        columns: columns,
+        order: [[0,'desc']],
+        columnDefs: holdings_fields.map(function(x){ return x.columnDef ? x.columnDef : false; }),
+        fixedColumns: true,
+        responsive:false,
+        select:false,
+        lengthMenu: [[10, 50, 100,-1], [10, 50, 100, "All"]]
+    });
+
+    datatable.columns.adjust().draw();
+    //datatable.draw();
+}
+
+//------------------------------------------------------------------------------
+function applyCss(_id) {
+
+      $('#'+_id).parent().css('padding','0');
+      $('#'+_id).parent().css('margin','0');
+      var wrapper_id = '#'+_id+'_wrapper';
+      $(wrapper_id).css('background-color', 'whitesmoke');
+      $(wrapper_id).css('border-top-right-radius', '5px');
+      $(wrapper_id + ' .row').first().css('padding', '15px');
+      $(wrapper_id + ' .row').first().css('border-bottom', '1px solid rgba(0,0,0,0.12)');
+      $(wrapper_id + ' .row').last().css('padding', '.5rem 1.0rem');
+      $(wrapper_id + ' .row').last().css('border-top', '1px solid rgba(0,0,0,.12)');
+      $(wrapper_id).parent().css('background-color','white');
+      $(wrapper_id).css('border','none');
+}
+
+//------------------------------------------------------------------------------
+function formatData(data) {
+
+    var get = Sugar.Object.get;
+
+    // Convert response data to datatable data format
+    for(var i=0; i<data.length; i++) {
+        var route = data[i];
+        var tbl_row = [];
+
+        for(var j=0; j<holdings_fields.length; j++) {
+            var k = holdings_fields[j]['data']['k'];
+            var sub_k = holdings_fields[j]['data']['sub_k'];
+            var val = '';
+
+            if(!sub_k && get(route, k))
+                val = route[k];
+            else if(sub_k && get(route[k], sub_k))
+                val = route[k][sub_k];
+
+            if(holdings_fields[j]['data'].hasOwnProperty('value'))
+                val = holdings_fields[j]['data']['value'](val);
+
+            tbl_row.push(val);
+        }
+        tbl_data.push(tbl_row);
+    }
+
+    return tbl_data;
 }
 
 //------------------------------------------------------------------------------
@@ -202,57 +250,6 @@ function filterDates(start, end) {
     return filtered;
 }
 
-
-//------------------------------------------------------------------------------
-function buildDataTable(id, columns, data ) {
-
-    datatable = $('#'+id).removeAttr('width').DataTable({
-        data: data,
-        columns: columns,
-        order: [[0,'desc']],
-        columnDefs: holdings_fields.map(function(x){ return x.columnDef ? x.columnDef : false; }),
-        fixedColumns: true,
-        responsive:false,
-        select:false,
-        lengthMenu: [[10, 50, 100,-1], [10, 50, 100, "All"]]
-    });
-
-    datatable.columns.adjust().draw();
-    //datatable.draw();
-}
-
-//------------------------------------------------------------------------------
-function formatData(data) {
-
-    var get = Sugar.Object.get;
-
-    // Convert response data to datatable data format
-    for(var i=0; i<data.length; i++) {
-        var route = data[i];
-        var tbl_row = [];
-
-        for(var j=0; j<holdings_fields.length; j++) {
-            var k = holdings_fields[j]['data']['k'];
-            var sub_k = holdings_fields[j]['data']['sub_k'];
-            var val = '';
-
-            if(!sub_k && get(route, k))
-                val = route[k];
-            else if(sub_k && get(route[k], sub_k))
-                val = route[k][sub_k];
-
-            if(holdings_fields[j]['data'].hasOwnProperty('value'))
-                val = holdings_fields[j]['data']['value'](val);
-
-            tbl_row.push(val);
-        }
-        tbl_data.push(tbl_row);
-    }
-
-    console.log(tbl_data);
-    return tbl_data;
-}
-
 /*fields = [
     { column:{ title:'Timetamp' }, columnDef:{ targets:0, visible:false, searchable:false }, data:{ k:'date', sub_k:'$date' } },
     { column:{ title:'Select' }, columnDef:false, data:false },
@@ -294,3 +291,17 @@ function formatData(data) {
     { column:{ title:'Cages' }, columnDef:false, data:{ k:'driverInput', sub_k:'nCages'} },
     { column:{ title:'Total Duration' }, columnDef:false, data:{ k:'routific', sub_k:'totalDuration', value:function(x){ return x? num_format(x/60,2) : '' } } }
 ];*/
+
+//------------------------------------------------------------------------------
+function api_call(path, data, on_done) {
+    
+    $.ajax(
+        { type:'POST', data:data, url:base_url + path }
+    )
+    .done(function(response){
+        on_done(response);
+    })
+    .fail(function(response){
+        on_done(response)
+    });
+}

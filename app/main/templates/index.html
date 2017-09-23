@@ -26,9 +26,11 @@
        <div style="margin: 1.5rem; background-color: rgba(255, 255, 255, 0.2);">
           <div style="padding: 1.5rem; color: white;">
              <div>
-                <div class="mb-5">
-                   <h2 style="font-family:sans-serif">Simulations</h2>
+                <div class="mb-3">
+                   <h2 style="font-family:sans-serif">Garybot</h2>
+                   <h2 style="font-family:monospace; color:yellow">[simulation]</h2>
                 </div>
+                <div id="stats"></div>
                 <div>
                   <table id="dt-bots" class="table table-responsive"></table>
                 </div>
@@ -37,13 +39,16 @@
        </div>
     </div>
     <div class="col-8 p-5" style="height:100%">
+      <h2 class="mb-5" hidden>Holdings</h2>
       <div class="tab-pane active" id="home" role="tabpanel" aria-expanded="true">
         <ul class="nav nav-tabs" role="tablist" style="border:none">
           <li class="nav-item">
-            <a class="nav-link active" data-toggle="tab" href="#upcoming" role="tab" aria-expanded="true">Open Holdings</a>
+            <a class="nav-link active" data-toggle="tab" href="#upcoming"
+            role="tab" aria-expanded="true">Open Holdings</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" data-toggle="tab" href="#historic" role="tab" aria-expanded="false">Closed Holdings</a>
+            <a class="nav-link" data-toggle="tab" href="#historic" role="tab"
+            aria-expanded="false">Closed Holdings</a>
           </li>
         </ul>
       </div>
