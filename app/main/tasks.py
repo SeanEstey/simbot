@@ -25,10 +25,9 @@ def update(self, **rest):
     balance = gary.balance()
     stats = gary.stats()
 
-    log.info(balance)
-    log.info(stats)
+    log.info('Garybot earnings=$%s', round(stats['earnings'],2))
 
-    """log.info('Garybot earnings=$%s, cad=$%s, btc=%s, buys=%s, sells=%s, ',
+    """, cad=$%s, btc=%s, buys=%s, sells=%s, ',
       round(stats['earnings'],2), round(balance['cad'],2), round(balance['btc'],5),
         stats['n_buy_orders'], stats['n_sell_orders'])
     """

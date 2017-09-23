@@ -18,7 +18,7 @@ def get_tickers(exch=None, currency=None):
         query['name'] = exch
     if currency:
         query['book'] = '%s_cad' % currency.lower()
-    return [g.db['exchanges'].find_one({'name':exch})] if exch else list(g.db['exchanges'].find())
+    return list(g.db['exchanges'].find(query))
 
 #-------------------------------------------------------------------------------
 def create(name, start_cad, buy_margin, sell_margin):
@@ -42,6 +42,9 @@ def create(name, start_cad, buy_margin, sell_margin):
 
 ########################### Class: SimBot ##########################
 class SimBot():
+    """TODO: determine volatility, adjust buy/sell margins dynamically.
+    High volatility == bigger margins, low volatility == lower margins
+    """
     _id = None
     name = None
     start_balance = None
@@ -109,8 +112,8 @@ class SimBot():
             holding['trades']
         )
 
-        log.info('BUY order, exch=%s, volume=%s, cad=%s @ %s',
-            exch, buy_vol, buy_value, ask)
+        log.info('BUY order, exch=%s, %s=%s, cad=%s @ %s',
+            exch, currency, buy_vol, buy_value, ask)
         return True
 
     #---------------------------------------------------------------
@@ -133,9 +136,58 @@ class SimBot():
         self.update_holding(holding['_id'],
             exch, status, currency, holding[currency], holding['cad'], holding['trades'])
 
-        log.info('SELL order, exch=%s, volume=%s, cad=%s @ %s',
-            exch, sell_vol, sell_value, bid)
+        log.info('SELL order, exch=%s, %s=%s, cad=%s @ %s',
+            exch, currency, sell_vol, sell_value, bid)
         return True
+
+    #---------------------------------------------------------------
+    def eval_bids(self):
+        """Evaluate each open holding, sell on margin criteria
+        """
+        n_sells=0
+        _holdings = self.holdings(status='open')
+        log.debug('---Evaluating SELL options for %s open holdings---', len(_holdings))
+
+        for i in range(len(_holdings)):
+            holding = _holdings[i]
+            ticker = get_tickers(exch=holding['exchange'], currency=holding['currency'])[0]
+            bid = ticker['bids'][0]
+            sell_margin = round(bid['price'] - holding['trades'][0]['price'],2)
+
+            if sell_margin >= self.rules['sell_margin']:
+                self.sell_order(ticker['name'], holding, bid['price'], bid['volume'])
+                n_sells+=1
+
+            msg = "holding #%s={exch:%s, p:%s, %s:%s}" % (i+1, holding['exchange'], holding['trades'][0]['price'], holding['currency'], holding['trades'][0]['volume'])
+            log.debug('%s, bid={p:%s, v:%s}, m=%s',
+                msg, bid['price'], round(bid['volume'],5), sell_margin)
+        log.debug('---%s SELLS made for %s holdings---', n_sells, len(_holdings))
+
+    #---------------------------------------------------------------
+    def eval_asks(self):
+        log.debug('evaluating buy options (asks)...')
+        n_buys = 0
+        for ticker in get_tickers():
+            BUY = False
+            ask = ticker['asks'][0]
+            holdings = self.holdings(exch=ticker['name'], currency=ticker['trade'])
+
+            if len(holdings) == 0:
+                BUY = True
+            else:
+                # Get recent holding BUY price. Buy order if ask price fallen below margin
+                recent_trade = holdings[-1]['trades'][0]
+                buy_margin = round(ask['price'] - recent_trade['price'],2)
+                log.debug('exch=%s, last_buy=%s, ask={p:%s, v:%s}, m=%s',
+                    ticker['name'], recent_trade['price'], ask['price'], round(ask['volume'],5), buy_margin)
+                if buy_margin <= self.rules['buy_margin']:
+                    BUY = True
+
+            if BUY:
+                new_holding = self.add_holding(ticker['name'], ticker['trade'])
+                r = self.buy_order(ticker['name'], new_holding, ask['price'], ask['volume'])
+                n_buys+=1
+        return n_buys
 
     #---------------------------------------------------------------
     def balance(self, exch=None):
@@ -156,72 +208,16 @@ class SimBot():
     def stats(self, exch=None):
         # n_lifetime_trades, 24h_earnings, total_earnings
         balance = self.balance()
-        market_value = balance['btc']*get_tickers()[0]['bid']
-        earnings = (market_value + balance['cad']) - self.start_balance
-        holdings = self.holdings()
-        n_buys = 0
-        n_sells = 0
-        for hold in holdings:
-            for trade in hold['trades']:
-                if trade['type'] == 'BUY':
-                    n_buys+=1
-                elif trade['type'] == 'SELL':
-                    n_sells+=1
+        log.debug(balance)
+        btc_val = balance['btc'] * get_tickers(currency='btc')[0]['bid']
+        eth_val = balance['eth'] * get_tickers(currency='eth')[0]['bid']
+        earnings = (btc_val + eth_val + balance['cad']) - self.start_balance
         return {
             'cad': balance['cad'],
-            'btc_value': market_value,
-            'earnings': earnings,
-            'n_buy_orders': n_buys,
-            'n_sell_orders': n_sells
+            'btc_value': btc_val,
+            'eth_value': eth_val,
+            'earnings': earnings
         }
-
-    #---------------------------------------------------------------
-    def eval_bids(self):
-        log.debug('evaluating sell options (bids)...')
-        n_sells = 0
-        for ticker in get_tickers():
-            _holdings = self.holdings(exch=ticker['name'], currency=ticker['trade'], status='open')
-
-            # Evaluate margins for each holding
-            for i in range(len(_holdings)):
-                holding = _holdings[i]
-                bid = ticker['bids'][0]
-                sell_margin = round(bid['price'] - holding['trades'][0]['price'],2)
-
-                if sell_margin >= self.rules['sell_margin']:
-                    self.sell_order(ticker['name'], holding, bid['price'], bid['volume'])
-                    n_sells+=1
-
-                msg = "holding={p:%s, v:%s}" % (holding['trades'][0]['price'], holding['trades'][0]['volume'])
-                log.debug('exch=%s, %s, bid={p:%s, v:%s}, sell_margin=%s',
-                    ticker['name'], msg, bid['price'], bid['volume'], sell_margin)
-        return n_sells
-
-    #---------------------------------------------------------------
-    def eval_asks(self):
-        log.debug('evaluating buy options (asks)...')
-        n_buys = 0
-        for ticker in get_tickers():
-            BUY = False
-            ask = ticker['asks'][0]
-            holdings = self.holdings(exch=ticker['name'], currency=ticker['trade'])
-
-            if len(holdings) == 0:
-                BUY = True
-            else:
-                # Get recent holding BUY price. Buy order if ask price fallen below margin
-                recent_trade = holdings[-1]['trades'][0]
-                buy_margin = round(ask['price'] - recent_trade['price'],2)
-                log.debug('exch=%s, last_buy=%s, ask={p:%s, v:%s}, buy_margin=%s',
-                    ticker['name'], recent_trade['price'], ask['price'], ask['volume'], buy_margin)
-                if buy_margin <= self.rules['buy_margin']:
-                    BUY = True
-
-            if BUY:
-                new_holding = self.add_holding(ticker['name'], ticker['trade'])
-                r = self.buy_order(ticker['name'], new_holding, ask['price'], ask['volume'])
-                n_buys+=1
-        return n_buys
 
     #---------------------------------------------------------------
     def eval_arbitrage(self):

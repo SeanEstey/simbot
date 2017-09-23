@@ -5,10 +5,17 @@ from flask import g, request
 log = logging.getLogger(__name__)
 from . import main
 from . import quadcx, coinsquare
+from .bot import SimBot
+
+@main.route('/holdings/get', methods=['POST'])
+def get_holdings():
+    gary = SimBot('Gary')
+    holdings = gary.holdings()
+    return dumps(holdings)
 
 @main.route('/tickers/get', methods=['POST'])
 def get_tickers():
-    tickers = list(g.db['tickers'].find())
+    tickers = list(g.db['exchanges'].find())
     return dumps(tickers)
 
 @main.route('/orders/get', methods=['POST'])
