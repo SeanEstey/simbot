@@ -97,7 +97,7 @@ class SimBot():
         FEE = 0.995
         MAX = 500.00
         currency = holding['currency']
-        buy_value = min(ask*ask_vol, MAX) #, holding['cad'])
+        buy_value = round(min(ask*ask_vol, MAX),2)
         buy_vol = round(buy_value/ask,5)
         holding['trades'].append({
             'type':'BUY',
@@ -152,15 +152,14 @@ class SimBot():
             holding = _holdings[i]
             ticker = get_tickers(exch=holding['exchange'], currency=holding['currency'])[0]
             bid = ticker['bids'][0]
-            sell_margin = round(bid['price'] - holding['trades'][0]['price'],2)
+            margin = round(bid['price'] - holding['trades'][0]['price'],2)
 
-            if sell_margin >= self.rules['sell_margin']:
+            if margin >= self.rules['sell_margin']:
                 self.sell_order(ticker['name'], holding, bid['price'], bid['volume'])
                 n_sells+=1
 
-            msg = "holding #%s={exch:%s, p:%s, %s:%s}" % (i+1, holding['exchange'], holding['trades'][0]['price'], holding['currency'], holding['trades'][0]['volume'])
-            log.debug('%s, bid={p:%s, v:%s}, m=%s',
-                msg, bid['price'], round(bid['volume'],5), sell_margin)
+            log.debug('holding #%s, exch=%s, p=%s, bid=%s, m=%s',
+                i+1, holding['exchange'], holding['trades'][0]['price'], bid['price'], margin)
         log.debug('---%s SELLS made for %s holdings---', n_sells, len(_holdings))
 
     #---------------------------------------------------------------
@@ -190,12 +189,16 @@ class SimBot():
         return n_buys
 
     #---------------------------------------------------------------
-    def balance(self, exch=None):
+    def balance(self, exch=None, status=None):
         """Returns dict: {'cad':float, 'btc':float}
         """
         query = {'bot_id':self._id}
+
         if exch:
             query['exchange'] = exch
+        if status:
+            query['status'] = status
+
         balance = g.db['holdings'].aggregate([
             {'$match':query},
             {'$group':{
@@ -206,25 +209,43 @@ class SimBot():
 
     #---------------------------------------------------------------
     def stats(self, exch=None):
-        # n_lifetime_trades, 24h_earnings, total_earnings
-        balance = self.balance()
-        log.debug(balance)
-        btc_val = balance['btc'] * get_tickers(currency='btc')[0]['bid']
-        eth_val = balance['eth'] * get_tickers(currency='eth')[0]['bid']
-        earnings = (btc_val + eth_val + balance['cad']) - self.start_balance
+        op_bal = self.balance(status='open')
+        cl_bal = self.balance(status='closed')
+        btc_val = op_bal['btc'] * get_tickers(currency='btc')[0]['bid']
+        eth_val = op_bal['eth'] * get_tickers(currency='eth')[0]['bid']
+        net = (btc_val + eth_val + op_bal['cad'] + cl_bal['cad']) - self.start_balance
+        earn = cl_bal['cad']
+        n_open = len(self.holdings(status='open'))
+        n_closed = len(self.holdings(status='closed'))
+
         return {
-            'cad': balance['cad'],
-            'btc': balance['btc'],
-            'eth': balance['eth'],
+            'n_open': n_open,
+            'n_closed': n_closed,
+            'cad': cl_bal['cad'],
+            'btc': op_bal['btc'],
+            'eth': op_bal['eth'],
             'btc_value': btc_val,
             'eth_value': eth_val,
-            'earnings': earnings
+            'earnings': earn,
+            'net': op_bal['cad'] + earn + btc_val + eth_val
         }
 
     #---------------------------------------------------------------
     def eval_arbitrage(self):
         pass
 
+    #---------------------------------------------------------------
+    def calc_limit_imbalance(self, exch=None):
+        """research paper: "as we found that on most days, large spreads
+        indicated low price changes"""
+        pass
+
+        """r = g.db['trades'].find({
+            'exchange':'QuadrigaCX',
+            'currency':'btc',
+            'date':{'$gte':ISODate("2017-09-23T16:50:41.000-06:00")}
+        })
+        """
     #---------------------------------------------------------------
     def __init__(self, name):
         """Load bot properties from Mongo

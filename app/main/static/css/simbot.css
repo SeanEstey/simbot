@@ -1,3 +1,21 @@
+.logo {
+    color:#464a4c;
+    font-family:sans-serif;
+    letter-spacing:3px;
+}
+.banner {
+ background-color:rgba(49,112,143,0);
+ border-bottom:1px solid rgba(70, 74, 76, 0.35);
+}
+.l-pane {
+    height:100%;
+    max-width:575px;
+    background-color:#215e64;
+}
+.holdings-container {
+    border:1px solid rgba(0, 0, 0, 0.14);
+    border-top-right-radius:5px;
+}
 table.dataTable {
     max-width:100%!important;
     border-collapse: collapse!important;

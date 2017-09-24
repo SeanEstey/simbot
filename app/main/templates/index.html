@@ -16,19 +16,25 @@
 {% endblock %}
 
 {% block content %}
- <div class="d-flex p-3 pl-5" style="background-color:rgba(49,112,143,0); border-bottom:1px solid rgba(70, 74, 76, 0.35);">
-    <h5 id="title" class="mb-0" style="color:#464a4c; font-family:sans-serif; letter-spacing:3px">
-      SIMBOT
-    </h5>
+ <div class="banner d-flex justify-content-between p-2 pl-3">
+    <div class="d-flex" id="logo">
+      <span><img class="mr-2" style="height:32px; width:32px" src="{{url_for("static",
+      filename="main/images/simbot-icon.jpg")}}"></span>
+      <h5 class="mt-2 logo">SIMBOT</h5>
+    </div>
+
+    <div class="d-flex" id="tickers">
+      <!--Ticker books inserted here-->
+    </div>
  </div>
  <div class="d-flex" style="height:1274px">
-    <div class="col-4 text-center p-0" style="height: 100%; max-width:575px; background-color: #215e64;">
-       <div style="margin: 1.5rem; background-color: rgba(255, 255, 255, 0.2);">
+    <div class="l-pane col-3 text-center p-0">
+       <div style="margin:1.5rem; background-color: rgba(255, 255, 255, 0.2);">
           <div style="padding: 1.5rem; color: white;">
              <div>
-                <div class="mb-3">
-                   <h2 style="font-family:sans-serif">Garybot</h2>
-                   <h2 style="font-family:monospace; color:yellow">[simulation]</h2>
+                <div class="justify-content-center d-flex mb-3">
+                   <h2 class="mr-2" style="font-family:monospace">Gary</h2>
+                   <h2 style="font-family:monospace; color:yellow">[SIMULATION]</h2>
                 </div>
                 <div id="stats"></div>
                 <div>
@@ -38,23 +44,57 @@
           </div>
        </div>
     </div>
-    <div class="col-8 p-5" style="height:100%">
+    <div class="col-9 p-5" style="height:100%">
       <h2 class="mb-5" hidden>Holdings</h2>
       <div class="tab-pane active" id="home" role="tabpanel" aria-expanded="true">
         <ul class="nav nav-tabs" role="tablist" style="border:none">
           <li class="nav-item">
             <a class="nav-link active" data-toggle="tab" href="#upcoming"
-            role="tab" aria-expanded="true">Open Holdings</a>
+            role="tab" aria-expanded="true">BTC</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" data-toggle="tab" href="#historic" role="tab"
-            aria-expanded="false">Closed Holdings</a>
+            aria-expanded="false">ETH</a>
           </li>
         </ul>
       </div>
-      <div class="tab-content" style="border: 1px solid rgba(0, 0, 0, 0.14); border-top-right-radius: 5px;">
+      <div class="tab-content holdings-container">
         <table id="dt-holdings" class="table dataTable"></table>
       </div>
     </div>
  </div>
+
+  <!--TEMPLATES-->
+  <div id="ticker-item" class="mr-3" hidden>
+    <div class="d-flex justify-content-center">
+      <span id="exch">QuadrigaCX</span>
+      <span>&nbsp;&nbsp; </span>
+      <span id="trade-pair">CAD/BTC</span>
+    </div>
+    <ul class="nav">
+      <li class="nav-item mr-1">
+        B: <strong><span id="bid">$4,490</span></strong>
+             <span id="base" hidden>CAD</span>
+      </li>
+      <li class="nav-item mr-1">
+        A: <strong><span id="ask">$4,850</span></strong>
+             <span id="base" hidden>CAD</span>
+      </li>
+    <!--<ul class="nav">-->
+      <li class="nav-item mr-1">
+        L: <strong><span id="low">$4,490</span></strong>
+             <span id="base" hidden>CAD</span>
+      </li>
+      <li class="nav-item mr-1">
+        H: <strong><span id="high">$4,850</span></strong>
+             <span id="base" hidden>CAD</span>
+      </li>
+    <!--</ul>-->
+    </ul>
+
+    <div id="book-json" hidden></div>
+  </div>
+
 {% endblock %}
+
+

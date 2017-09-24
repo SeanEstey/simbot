@@ -1,5 +1,4 @@
-/* datatable.js 
-*/
+/* datatable.js  */
 
 base_url = "http://45.79.176.125";
 num_format = Sugar.Number.format;
@@ -12,9 +11,12 @@ datatable = null;
 
 holdings_fields = [
     {
-        column: { title:'_id'},
-        columnDef: { targets:0, visible:false },
-        data: { k:'_id', sub_k:'$oid'}
+        column: { title:'Datetime'},
+        columnDef: { targets:0 },
+        data: { k:'_id', sub_k:'$oid', value:function(v){
+            // Convert MongoDB ObjectId->js Date
+            return new Date(parseInt(v.substring(0,8),16)*1000).toLocaleString()}
+        }
     },
     {
         column: { title:'Exchange' },
@@ -28,7 +30,9 @@ holdings_fields = [
     },
     {
         column: { title:'Earnings' },
-        columnDef:{ targets:3, render:function(data, type, row){ return data? '$'+num_format(data,2) :'' } },
+        columnDef:{ targets:3, render:function(data, type, row){
+            return data? '$'+num_format(data,2) :'' } 
+        },
         data: { k:'cad' }
     },
     {
@@ -54,7 +58,8 @@ holdings_fields = [
     {
         column: { title:'Sell Price' },
         columnDef: { },
-        data: { k:'trades', value:function(v){ return '$'+num_format(v[v.length-1]['price'],0) } }
+        data: { k:'trades', value:function(v){ return v.length>1 ?
+        '$'+num_format(v[v.length-1]['price'],0) : '' } }
     }
 ];
 
@@ -64,24 +69,51 @@ function init() {
     api_call('/stats/get', null, function(response){
         var stats = JSON.parse(response);
         var html = '';
-        for(var k in stats) {
-            html += k.toTitleCase() + " : " + num_format(stats[k],2);
-            html += '<br>';
-        }
+        html += 'Earnings: $' + num_format(stats['earnings'],2) + ' CAD<br>';
+        html += 'Open: ' + stats['n_open'] + '<br>';
+        html += 'Closed: ' + stats['n_closed'] + '<br>';
+        html += 'BTC: ' + num_format(stats['btc'],5) + ' [~$'
+        + num_format(stats['btc_value'],0) + ']<br>';
+        html += 'ETH: ' + num_format(stats['eth'],5) + ' [~$'
+        + num_format(stats['eth_value'],0) + ']<br>';
+        html += 'Net Holdings: $' + num_format(stats['net'],2) + ' CAD';
+        
         $('#stats').html(html);
-        /*
-            'cad': balance['cad'],
-            'btc': balance['btc'],
-            'eth': balance['eth'],
-            'btc_value': btc_val,
-            'eth_value': eth_val,
-            'earnings': earnings
-        */
     });
 
     api_call('/tickers/get', null, function(response){
         var tickers = JSON.parse(response);
-        console.log(tickers);
+        tickers.sort(function(a,b) {
+            var name_a = a.name.toUpperCase();
+            var name_b = b.name.toUpperCase();
+            if(name_a < name_b) return -1;
+            if(name_a > name_b) return 1;
+            return 0;
+        });
+
+        for(var i=0; i<tickers.length; i++) {
+            var book = tickers[i];
+            delete book['_id'];
+            var t_id = '#ticker'+(i+1);
+
+            var $item = $('#ticker-item').clone().prop('id',t_id);
+            $item.find('#exch').text(book['name']);
+            $item.find('#trade-pair').text(book['base'].toUpperCase()+'/'+book['trade'].toUpperCase());
+            $item.find('#bid').text('$' + num_format(book['bid'],0));
+            $item.find('#ask').text('$'+ num_format(book['ask'],0));
+            $item.find('#low').text('$'+ num_format(book['low'] || "",0));
+            $item.find('#high').text('$'+ num_format(book['high'] || "",0));
+
+            $item.find('#book-json').jsonview(book);
+
+            $('#tickers').append($item);
+            $item.find('#book-json .expanded').trigger('click');
+            $item.prop('hidden',false);
+
+            $item.click(function() {
+                $(this).find('#book-json').prop('hidden',false);
+            });
+        }
     });
 
     api_call(
@@ -125,7 +157,6 @@ function buildDataTable(id, columns, data ) {
     });
 
     datatable.columns.adjust().draw();
-    //datatable.draw();
 }
 
 //------------------------------------------------------------------------------
@@ -171,7 +202,6 @@ function formatData(data) {
         }
         tbl_data.push(tbl_row);
     }
-
     return tbl_data;
 }
 
