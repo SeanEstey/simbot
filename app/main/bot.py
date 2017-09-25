@@ -2,22 +2,23 @@
 """
 import logging
 from flask import g
+from app.main import exch_conf, pair_conf
 from app.lib.timer import Timer
 from bson import ObjectId as oid
 log = logging.getLogger(__name__)
 
-config = {
-    'MAX_BUY':500,
-    'MAX_SELL_VOLUME': 0.5
-}
+#---------------------------------------------------------------
+def pair_names(pair_str):
+    div_idx = pair_str.index('_')
+    return [ pair_str[0:div_idx], pair_str[div_idx+1:] ]
 
 #-------------------------------------------------------------------------------
-def get_tickers(exch=None, currency=None):
+def get_tickers(exch=None, pair=None):
     query = {}
     if exch:
         query['name'] = exch
-    if currency:
-        query['book'] = '%s_cad' % currency.lower()
+    if pair:
+        query['book'] = pair
     return list(g.db['exchanges'].find(query))
 
 #-------------------------------------------------------------------------------
@@ -34,9 +35,6 @@ def create(name, start_cad, buy_margin, sell_margin):
 
     bot = SimBot(name)
 
-    for ticker in tickers:
-        bot.add_holding(ticker['name'], ticker['trade'])
-
     log.info('Created %s bot w/ $%s balance', name, start_cad)
 
 
@@ -51,22 +49,22 @@ class SimBot():
     rules = None
 
     #---------------------------------------------------------------
-    def add_holding(self, exch, currency):
+    def add_holding(self, exch, pair, trade):
         """status values: 'pending', 'open', 'closed'
         """
         r = g.db['holdings'].insert_one({
             'bot_id':self._id,
             'exchange':exch,
-            'currency':currency,
-            'status':'pending',
-            currency:0.00000,
-            'cad':0.00,
-            'trades':[]
+            'status':'open',
+            'fees':trade['fee'],
+            'pair': pair,
+            'balance': trade['volume'],
+            'trades':[trade]
         })
         return g.db['holdings'].find_one({'_id':oid(r.inserted_id)})
 
     #---------------------------------------------------------------
-    def holdings(self, exch=None, currency=None, status=None):
+    def holdings(self, exch=None, pair=None, status=None):
         """status values: 'pending', 'open', 'closed'
         """
         query = {'bot_id':self._id}
@@ -74,102 +72,115 @@ class SimBot():
             query['exchange'] = exch
         if status:
             query['status'] = status
-        if currency:
-            query['currency'] = currency
+        if pair:
+            query['pair'] = pair
         return list(g.db['holdings'].find(query))
 
     #---------------------------------------------------------------
-    def update_holding(self, _id, exch, status, currency, vol, cad, trades):
-        """status values: 'pending', 'open', 'closed'
+    def add_trade(self, exch, pair, _type, price, pair_vol, holding=None):
+        """Add a BUY/SELL trade to given holding, closing it if
+        sell balance reaches 0.
+        @pair_vol: list w/ float pair (i.e [0.1111,-500.00] for
+        buy order of BTC priced in CAD
         """
-        g.db['holdings'].update_one(
-            {'_id':_id},
-            {'$set': {
-                'status':status,
-                currency:vol,
-                'cad':cad,
-                'trades':trades
-            }})
+
+        fee_pct = exch_conf(exch)['FEES'][pair]
+        fee = fee_pct * abs(pair_vol[1])
+        trade = {
+            'type' :_type,
+            'price': price,
+            'volume': pair_vol,
+            'fee': fee
+        }
+
+        if holding is None:
+            return self.add_holding(exch, pair, trade)
+        else:
+            holding['trades'].append(trade)
+            holding['balance'][0] += pair_vol[0]
+            holding['balance'][1] += pair_vol[1]
+            holding['fees'] += trade['fee']
+            if holding['balance'][0] == 0:
+                holding['status'] = 'closed'
+            g.db['holdings'].update_one({'_id':holding['_id']},{'$set':holding})
+            return holding
 
     #---------------------------------------------------------------
-    def buy_order(self, exch, holding, ask, ask_vol, options='market'):
-        # TODO: handle eating through > 1 orders, proper fees
-        FEE = 0.995
-        MAX = 500.00
-        currency = holding['currency']
-        buy_value = round(min(ask*ask_vol, MAX),2)
-        buy_vol = round(buy_value/ask,5)
-        holding['trades'].append({
-            'type':'BUY',
-            'price':ask,
-            'volume':buy_vol,
-            'value':buy_value
-        })
-        self.update_holding(holding['_id'],
-            exch, 'open', currency,
-            holding[currency] + buy_vol,
-            holding['cad'] - buy_value*FEE,
-            holding['trades']
-        )
+    def buy_order(self, exch, pair, ask, ask_vol, options='market'):
+        # WRITEME: handle eating through > 1 orders
 
-        log.info('BUY order, exch=%s, %s=%s, cad=%s @ %s',
-            exch, currency, buy_vol, buy_value, ask)
-        return True
+        max_vol = pair_conf(pair)['MAX_VOLUME']
+        gain_vol = round(min(max_vol, ask_vol),5)
+        loss_vol = round(ask*gain_vol,2)
+
+        holding = self.add_trade(
+            exch,
+            pair,
+            'BUY',
+            ask,
+            [gain_vol, loss_vol*-1])
+
+        log.info('BUY order, exch=%s, %s=%s, %s=%s @ %s',
+            exch, pair_names(pair)[0], round(gain_vol,2), pair_names(pair)[1],
+            round(loss_vol,2), ask)
+
+        return holding
 
     #---------------------------------------------------------------
-    def sell_order(self, exch, holding, bid, bid_vol, options='market'):
-        # TODO: handle eating through > 1 orders, proper fees
-        FEE=0.995
-        MAX_VOL=0.5
-        currency = holding['currency']
-        sell_vol = min(holding[currency], bid_vol, MAX_VOL)
-        sell_value = round(bid*sell_vol, 2)
-        holding[currency] -= sell_vol
-        holding['cad'] += sell_value*FEE
-        status = 'open' if holding[currency] > 0 else 'closed'
-        holding['trades'].append({
-            'type':'SELL',
-            'price':bid,
-            'volume':sell_vol,
-            'value':sell_value
-        })
-        self.update_holding(holding['_id'],
-            exch, status, currency, holding[currency], holding['cad'], holding['trades'])
+    def sell_order(self, holding, bid, bid_vol, options='market'):
+        # WRITEME: handle eating through > 1 orders
 
-        log.info('SELL order, exch=%s, %s=%s, cad=%s @ %s',
-            exch, currency, sell_vol, sell_value, bid)
-        return True
+        max_vol = pair_conf(holding['pair'])['MAX_VOLUME']
+        balance = holding['balance']
+        loss_vol = min(balance[0], bid_vol)
+        gain_vol = round(bid*loss_vol,2)
+
+        holding = self.add_trade(
+            holding['exchange'],
+            holding['pair'],
+            'SELL',
+            bid,
+            [loss_vol*-1, gain_vol],
+            holding=holding)
+
+        log.info('SELL order, exch=%s, %s=%s, %s=%s @ %s',
+            holding['exchange'],
+            pair_names(holding['pair'])[0], round(loss_vol,2),
+            pair_names(holding['pair'])[1], round(gain_vol,2), bid)
+
+        return holding
 
     #---------------------------------------------------------------
     def eval_bids(self):
         """Evaluate each open holding, sell on margin criteria
         """
-        n_sells=0
         _holdings = self.holdings(status='open')
-        log.debug('---Evaluating SELL options for %s open holdings---', len(_holdings))
+        log.debug('---SELL optionss---')
 
         for i in range(len(_holdings)):
             holding = _holdings[i]
-            ticker = get_tickers(exch=holding['exchange'], currency=holding['currency'])[0]
+            ticker = get_tickers(exch=holding['exchange'], pair=holding['pair'])[0]
             bid = ticker['bids'][0]
+
             margin = round(bid['price'] - holding['trades'][0]['price'],2)
 
             if margin >= self.rules['sell_margin']:
-                self.sell_order(ticker['name'], holding, bid['price'], bid['volume'])
-                n_sells+=1
+                self.sell_order(holding, bid['price'], bid['volume'])
 
             log.debug('holding #%s, exch=%s, p=%s, bid=%s, m=%s',
                 i+1, holding['exchange'], holding['trades'][0]['price'], bid['price'], margin)
-        log.debug('---%s SELLS made for %s holdings---', n_sells, len(_holdings))
 
     #---------------------------------------------------------------
     def eval_asks(self):
-        log.debug('evaluating buy options (asks)...')
-        n_buys = 0
+        """TODO: if market average has moved and no buys for > 1 hour,
+        make small buy to reset last buy price
+        """
+        log.debug('---BUY options---')
+
         for ticker in get_tickers():
             BUY = False
             ask = ticker['asks'][0]
-            holdings = self.holdings(exch=ticker['name'], currency=ticker['trade'])
+            holdings = self.holdings(exch=ticker['name'], pair=ticker['book'])
 
             if len(holdings) == 0:
                 BUY = True
@@ -183,10 +194,11 @@ class SimBot():
                     BUY = True
 
             if BUY:
-                new_holding = self.add_holding(ticker['name'], ticker['trade'])
-                r = self.buy_order(ticker['name'], new_holding, ask['price'], ask['volume'])
-                n_buys+=1
-        return n_buys
+                holding = self.buy_order(
+                    ticker['name'],
+                    ticker['book'],
+                    ask['price'],
+                    ask['volume'])
 
     #---------------------------------------------------------------
     def balance(self, exch=None, status=None):
@@ -199,22 +211,48 @@ class SimBot():
         if status:
             query['status'] = status
 
-        balance = g.db['holdings'].aggregate([
-            {'$match':query},
-            {'$group':{
-                '_id':'', 'cad':{'$sum':'$cad'}, 'btc':{'$sum':'$btc'}, 'eth':{'$sum':'$eth'}}},
-            {'$project':{'_id':0, 'cad':1, 'btc':1, 'eth':1}}
-        ])
-        return list(balance)[0]
+        pairs = [
+            {'pair':'btc_cad', 'l_pair':'btc'},
+            {'pair':'eth_cad', 'l_pair':'eth'}
+        ]
+        results = []
+
+        for p in pairs:
+            query['pair'] = p['pair']
+            grp = {
+                '_id':'',
+                'fees':{'$sum':'$fees'},
+                p['l_pair']: {'$sum':{'$arrayElemAt':['$balance',0]}},
+                'cad':{'$sum':{'$arrayElemAt':['$balance',1]}}}
+
+            r = g.db['holdings'].aggregate([
+                {'$match':query},
+                {'$group':grp},
+                {'$project':{'_id':0, 'fees':1, 'cad':1, p['l_pair']:1}}
+            ])
+            r = list(r)
+            if len(r) > 0:
+                results.append(r[0])
+            else:
+                results.append({})
+
+        bal = {
+            'cad': results[0].get('cad',0) + results[1].get('cad',0),
+            'eth': results[1].get('eth',0),
+            'btc': results[0].get('btc',0),
+            'fees': results[0].get('fees',0) + results[1].get('fees',0)
+        }
+
+        return bal
 
     #---------------------------------------------------------------
     def stats(self, exch=None):
         op_bal = self.balance(status='open')
         cl_bal = self.balance(status='closed')
-        btc_val = op_bal['btc'] * get_tickers(currency='btc')[0]['bid']
-        eth_val = op_bal['eth'] * get_tickers(currency='eth')[0]['bid']
-        net = (btc_val + eth_val + op_bal['cad'] + cl_bal['cad']) - self.start_balance
-        earn = cl_bal['cad']
+        btc_val = op_bal['btc'] * get_tickers(pair='btc_cad')[0]['bid']
+        eth_val = op_bal['eth'] * get_tickers(pair='eth_cad')[0]['bid']
+        net = (btc_val + eth_val + op_bal['cad'] + cl_bal['cad']) - self.start_balance - op_bal['fees'] - cl_bal['fees']
+        earn = cl_bal['cad'] - cl_bal['fees']
         n_open = len(self.holdings(status='open'))
         n_closed = len(self.holdings(status='closed'))
 
@@ -232,7 +270,35 @@ class SimBot():
 
     #---------------------------------------------------------------
     def eval_arbitrage(self):
-        pass
+
+        r = g.db['exchanges'].aggregate([
+            {'$group':{'_id':'$book', 'min_ask':{'$min':'$ask'}, 'max_bid':{'$max':'$bid'}}}])
+
+        for book in list(r):
+            diff = round(book['max_bid'] - book['min_ask'],2)
+            if diff > 50:
+                log.debug('%s arbitrage=%s', book['_id'], diff)
+
+                buy_exch = g.db['exchanges'].find_one({'ask':book['min_ask']})
+                sell_exch = g.db['exchanges'].find_one({'bid':book['max_bid']})
+                vol = min(buy_exch['asks'][0]['volume'], sell_exch['bids'][0]['volume'])
+
+                holding = self.buy_order(
+                    buy_exch['name'],
+                    buy_exch['book'],
+                    buy_exch['asks'][0]['price'],
+                    vol)
+
+                # Transfer holding to new exchange
+                holding['exchange'] = sell_exch['name']
+
+                self.sell_order(
+                    holding,
+                    sell_exch['bids'][0]['price'],
+                    vol)
+
+                log.info('Arbitrage trade from=%s, to=%s, rate=%s',
+                    buy_exch['name'], sell_exch['name'], diff)
 
     #---------------------------------------------------------------
     def calc_limit_imbalance(self, exch=None):

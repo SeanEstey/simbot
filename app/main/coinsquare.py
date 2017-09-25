@@ -5,12 +5,8 @@ from pprint import pprint
 from logging import getLogger
 from flask import g
 from app.lib.timer import Timer
+from app.main import exch_conf
 log = getLogger(__name__)
-
-config = {
-    # args: [base, trade]
-    'book_url': 'https://coinsquare.io/api/v1/data/bookandsales/%s/%s/16?'
-}
 
 #-------------------------------------------------------------------------------
 def update(base, trade):
@@ -19,9 +15,10 @@ def update(base, trade):
 
 #-------------------------------------------------------------------------------
 def update_book(book_name, base, trade):
+    conf = exch_conf('Coinsquare')
     t1 = Timer()
     try:
-        data = requests.get(config['book_url'] % (base,trade))
+        data = requests.get(conf['BOOK_URL'] % (base,trade))
     except Exception as e:
         log.exception('Coinsquare orderbook request failed: %s', str(e))
         return False

@@ -5,12 +5,8 @@ from pprint import pprint
 from logging import getLogger
 from flask import g
 from app.lib.timer import Timer
+from app.main import exch_conf
 log = getLogger(__name__)
-
-config = {
-  'ticker_url':  'https://api.quadrigacx.com/v2/ticker?book=%s', #book_name
-  'book_url': 'https://api.quadrigacx.com/v2/order_book?book=%s' #book_name
-}
 
 #-------------------------------------------------------------------------------
 def update(base, trade):
@@ -24,9 +20,10 @@ def update(base, trade):
 def update_book(book_name, base, trade):
     """Save recent orderbook to DB
     """
+    conf = exch_conf('QuadrigaCX')
     t1 = Timer()
     try:
-        r = requests.get(config['book_url'] % book_name)
+        r = requests.get(conf['BOOK_URL'] % book_name)
     except Exception as e:
         log.exception('Failed to get Quadriga orderbook: %s', str(e))
         raise
@@ -59,9 +56,10 @@ def update_book(book_name, base, trade):
 def update_info(book_name, base, trade):
     """Ticker JSON dict w/ keys: ['last','high','low','vwap','volume','bid','ask']
     """
+    conf = exch_conf('QuadrigaCX')
     t1 = Timer()
     try:
-        r = requests.get(config['ticker_url'] % book_name)
+        r = requests.get(conf['TICKER_URL'] % book_name)
     except Exception as e:
         log.exception('Failed to get Quadriga ticker book: %s', str(e))
         raise

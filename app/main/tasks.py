@@ -21,6 +21,7 @@ def update(self, **rest):
     gary = SimBot('Gary')
     gary.eval_bids()
     gary.eval_asks()
+    gary.eval_arbitrage()
 
     balance = gary.balance()
     stats = gary.stats()

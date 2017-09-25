@@ -85,8 +85,6 @@ def startup_msg(app, show_celery=False):
 #-------------------------------------------------------------------------------
 def set_environ(app):
 
-    from config import SSL_CERT_PATH
-
     if not env.get('SANDBOX'):
         env['SANDBOX'] = 'False'
 

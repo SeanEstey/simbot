@@ -76,7 +76,7 @@ function init() {
         + num_format(stats['btc_value'],0) + ']<br>';
         html += 'ETH: ' + num_format(stats['eth'],5) + ' [~$'
         + num_format(stats['eth_value'],0) + ']<br>';
-        html += 'Net Holdings: $' + num_format(stats['net'],2) + ' CAD';
+        html += 'Holdings Gain: $' + num_format(stats['net'],2) + ' CAD';
         
         $('#stats').html(html);
     });
@@ -114,6 +114,44 @@ function init() {
                 $(this).find('#book-json').prop('hidden',false);
             });
         }
+
+        // Calculate any arbitrage rates
+        var h_bid = null;
+        var h_exch = "";
+        var l_ask = null;
+        var l_exch = "";
+
+        for(var i=0; i<tickers.length; i++) {
+            var book = tickers[i];
+            if(book['trade'] != 'btc')
+                continue;
+
+            if(!h_bid) {
+                h_bid = book['bid'];
+                h_exch = book['name'];
+                l_ask = book['ask'];
+                l_exch = book['name'];
+                continue;
+            }
+            else {
+                if(book['bid'] > h_bid) {
+                    h_bid = book['bid'];
+                    h_exch = book['name'];
+                }
+
+                if(book['ask'] < l_ask)
+                    l_ask = book['ask'];
+                    l_exch = book['name'];
+            }
+        }
+
+        if(l_ask < h_bid) {
+            $("#tickers").append("<div>" +
+                "<div>" + l_exch+" <strong>&#8658;</strong> "+h_exch+"</div>" +
+                "<div>Arbitrage: <strong>$"+num_format(h_bid-l_ask,2)+"</strong></div>" +
+            "</div>");
+        }
+
     });
 
     api_call(

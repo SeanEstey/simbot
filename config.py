@@ -1,14 +1,8 @@
-from datetime import timedelta
-
 # Flask
 TEMPLATES_AUTO_RELOAD = True
-SESSION_COLLECTION = 'sessions'
 SECRET_KEY = 'secret'
-
-# App
 TITLE = 'Trade Simulator'
 DEBUG = False
-SSL_CERT_PATH = None
 LOG_PATH = '/root/simbot/logs/'
 MONGO_URL = 'localhost'
 MONGO_PORT = 27017
@@ -18,18 +12,51 @@ PUB_PORT = 80
 DB = 'simbot'
 APP_ROOT_LOGGER_NAME = 'app'
 CELERY_ROOT_LOGGER_NAME = 'app'
-
-
-# Exchange Metadata
-
-CBIX = {
-    'url': 'http://api.cbix.ca/v1/index'
-}
-
-
-# Other
 ENV_VARS = [
     'SANDBOX',
     'BEAT',
     'HTTP_HOST',
-    'TEST']
+    'TEST'
+]
+# App
+EXCHANGES = [
+    {
+        'NAME': 'Coinsquare',
+        'API_EXISTS':False,
+        'API_ENABLED':False,
+         # args: (base, trade)
+        'BOOK_URL': 'https://coinsquare.io/api/v1/data/bookandsales/%s/%s/16?',
+        'FEES': {
+            'btc_cad': 0.002, # Maker == 0.001
+            'eth_cad': 0.002, # Maker == 0.001
+            'eth_btc': 0.002  # Maker == 0.001
+        }
+    },
+    {
+        'NAME':'QuadrigaCX',
+        'API_EXISTS':True,
+        'API_ENABLED':False,
+        'TICKER_URL': 'https://api.quadrigacx.com/v2/ticker?book=%s', # %s=book_name
+        'BOOK_URL': 'https://api.quadrigacx.com/v2/order_book?book=%s', # %s=book_name
+        'FEES': {
+            'btc_cad': 0.005,
+            'eth_cad': 0.005,
+            'eth_btc': 0.002
+        }
+    }
+]
+PAIRS = [
+    {
+        'NAME': 'btc_cad',
+        'MAX_VOLUME': 0.15
+    },
+    {
+        'NAME': 'eth_cad',
+        'MAX_VOLUME': 1.5,
+    },
+    {
+        'NAME': 'eth_btc',
+        'MAX_VOLUME': 1.25
+    }
+]
+
