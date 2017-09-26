@@ -23,6 +23,19 @@ def update(self, **rest):
     gary.eval_asks()
     gary.eval_arbitrage()
 
+    gary_api = g.db['bots'].find_one({'name':'Gary'})['api'][0]
+    from app.quadriga import QuadrigaClient
+    log.debug('gary_key=%s', gary_api['key'])
+    client = QuadrigaClient(
+        api_key=gary_api['key'],
+        api_secret=gary_api['secret'],
+        client_id=64288,
+        default_book='btc_cad'
+     )
+    #log.debug(client.get_summary())
+    #log.debug(client.get_public_orders())
+    log.debug(client.get_trades(limit=5))
+
     balance = gary.balance()
     stats = gary.stats()
 

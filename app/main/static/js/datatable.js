@@ -63,9 +63,40 @@ holdings_fields = [
     }
 ];
 
+
+function interpretQuadCXData() {
+
+    /*
+    filter: "emiting event"
+
+    @r: rate (price)
+    @d: orderID (timestamp in ms)
+    @a: amount (volume)
+    @v: value
+    @t: top (bool, 1=show order, 0=del order)
+
+    // Add/update order?
+    "update-global",{
+        "orders":[
+            {"d":1506371296351,"r":4929.89,"t":1,"a":2.5457,"v":12550.020973}
+        ],
+        "hash":6429,
+        "book":"btc_cad",
+        "sequence":87519634
+    }
+
+    // Delete order?
+    "update-global",{
+        "orders":[
+            {"d":1506372035623,"r":4876.67,"t":0}],
+            "hash":7379,
+            "book":"btc_cad",
+            "sequence":87521512}
+    */
+}
+
 //------------------------------------------------------------------------------
 function init() {
-    
     api_call('/stats/get', null, function(response){
         var stats = JSON.parse(response);
         var html = '';
@@ -76,7 +107,7 @@ function init() {
         + num_format(stats['btc_value'],0) + ']<br>';
         html += 'ETH: ' + num_format(stats['eth'],5) + ' [~$'
         + num_format(stats['eth_value'],0) + ']<br>';
-        html += 'Holdings Gain: $' + num_format(stats['net'],2) + ' CAD';
+        html += 'Holdings Gain: $' + (num_format(stats['btc_value'],2)  + num_format(stats['eth_value'],2)) + ' CAD';
         
         $('#stats').html(html);
     });

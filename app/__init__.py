@@ -67,6 +67,8 @@ def create_app(pkg_name, kv_sess=True, mongo_client=True):
     # Blueprints
     from app.main import main as main_mod
     app.register_blueprint(main_mod)
+    from app.quadriga import quadcx as quadcx_mod
+    app.register_blueprint(quadcx_mod)
 
     return app
 

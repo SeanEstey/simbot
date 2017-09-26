@@ -48,15 +48,18 @@ EXCHANGES = [
 PAIRS = [
     {
         'NAME': 'btc_cad',
-        'MAX_VOLUME': 0.15
+        'MAX_VOL': 0.15,
+        'MIN_ARBIT_RATE': 50
     },
     {
         'NAME': 'eth_cad',
-        'MAX_VOLUME': 1.5,
+        'MAX_VOL': 1.5,
+        'MIN_ARBIT_RATE': 25
     },
     {
         'NAME': 'eth_btc',
-        'MAX_VOLUME': 1.25
+        'MAX_VOL': 1.25,
+        'MIN_ARBIT_RATE': 0.0015
     }
 ]
 

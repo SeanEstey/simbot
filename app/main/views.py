@@ -8,4 +8,6 @@ from . import main # Blueprint
 #-------------------------------------------------------------------------------
 @main.route('/')
 def index():
+
+
     return render_template('index.html')

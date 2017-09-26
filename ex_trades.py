@@ -60,8 +60,11 @@ def on_message(ws, message):
         data['currency'] = 'btc'
         data['date'] = parse(data['date'])
         r = db['trades'].insert_one(data)
-        print('ex:%s, price:$%s, volume:%s, value:$%s' %(
+
+        print('%s, p=%s, v=%s, t=%s' %(
             data['exchange'], data['price'], data['volume'], data['value']))
+
+        # Update local order_books
 
 def on_error(ws, error):
     print(error)
