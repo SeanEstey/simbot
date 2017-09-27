@@ -18,15 +18,17 @@ ENV_VARS = [
     'HTTP_HOST',
     'TEST'
 ]
-# App
 EXCHANGES = [
     {
         'NAME': 'Coinsquare',
         'API_EXISTS':False,
         'API_ENABLED':False,
-         # args: (base, trade)
-        'BOOK_URL': 'https://coinsquare.io/api/v1/data/bookandsales/%s/%s/16?',
-        'FEES': {
+        'BOOK_URL': 'https://coinsquare.io/api/v1/data/bookandsales/%s/%s/16?', #base,trade
+        'FUND_FEE_BANK_DRAFT': 0.0025,
+        'FUND_FEE_WIRE': 0.005,
+        'WITH_FEE_BANK_DEPOSIT': 0.01,
+        'WITH_FEE_WIRE': 0.005,
+        'TRADE_FEE': {
             'btc_cad': 0.002, # Maker == 0.001
             'eth_cad': 0.002, # Maker == 0.001
             'eth_btc': 0.002  # Maker == 0.001
@@ -35,10 +37,16 @@ EXCHANGES = [
     {
         'NAME':'QuadrigaCX',
         'API_EXISTS':True,
-        'API_ENABLED':False,
+        'API_ENABLED':True,
         'TICKER_URL': 'https://api.quadrigacx.com/v2/ticker?book=%s', # %s=book_name
         'BOOK_URL': 'https://api.quadrigacx.com/v2/order_book?book=%s', # %s=book_name
-        'FEES': {
+        'FUND_FEE_INTERAC': 0.015,
+        'FUND_FEE_WIRE': 0,
+        'FUND_FEE_EFT': 0.025,
+        'WITH_FEE_WIRE': 0,
+        'WITH_FEE_EFT': 0,
+        'WITH_FEE_INTERAC': 0.02,
+        'TRADE_FEE': {
             'btc_cad': 0.005,
             'eth_cad': 0.005,
             'eth_btc': 0.002

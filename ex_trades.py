@@ -29,6 +29,8 @@ client = pymongo.MongoClient(
 db = client['simbot']
 
 def connect(endpoints):
+    """Main thread
+    """
     websocket.enableTrace(True)
 
     for endpoint in endpoints:
@@ -49,12 +51,15 @@ def connect(endpoints):
     signal.signal(signal.SIGINT, signal_handler)
     print('Press Ctrl+C to quit')
 
+    # Loops forever after socket is connected.
     while ws.sock.connected:
         update_spinner()
+        get_prices()
 
 def on_message(ws, message):
+    """Daemon websocket thread.
+    """
     data = json.loads(message)
-
     # Trade
     if 'transaction_id' in data:
         data['currency'] = 'btc'
@@ -64,20 +69,31 @@ def on_message(ws, message):
         print('%s, p=%s, v=%s, t=%s' %(
             data['exchange'], data['price'], data['volume'], data['value']))
 
-        # Update local order_books
-
 def on_error(ws, error):
+    """Daemon thread
+    """
     print(error)
 
 def on_close(ws):
+    """Daemon thread
+    """
     print("### closed ###")
     connect()
 
 def signal_handler(signal, frame):
+    """Main thread
+    """
     print('You pressed Ctrl+C!')
     sys.exit(0)
 
+def get_prices():
+    """Main thread
+    """
+    pass
+
 def update_spinner():
+    """Main thread
+    """
     msg = 'listening %s' % next(spinner)
     sys.stdout.write(msg)
     sys.stdout.flush()

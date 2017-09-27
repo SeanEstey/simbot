@@ -25,26 +25,77 @@ def update_book(book_name, base, trade):
     else:
         pprint(data)
         _book = json.loads(data.text)['book']
-        _asks = [_book[i] for i in range(len(_book)) if _book[i]['t'] == 'b']
-        del _asks[-1]
-        _bids = [_book[i] for i in range(len(_book)) if _book[i]['t'] == 's']
-        del _bids[-1]
+        asks = [_book[i] for i in range(len(_book)) if _book[i]['t'] == 'b']
+        del asks[-1]
+        bids = [_book[i] for i in range(len(_book)) if _book[i]['t'] == 's']
+        del bids[-1]
 
     book = {'name':'Coinsquare', 'bids':[], 'asks':[]}
 
-    for ask in _asks:
+    for ask in asks:
         dollars = float(ask['amt'])/100
         volume = round(float(ask['base'])/100000000, 5)
         price = round(dollars/volume,2)
         book['asks'].append({'price':price, 'volume':volume})
 
-    for bid in _bids:
+    for bid in bids:
         dollars = float(bid['amt'])/100
         volume = round(float(bid['base'])/100000000, 5)
         price = round(dollars/volume,2)
         book['bids'].append({'price':price, 'volume':volume})
 
     spread = round(book['asks'][0]['price'] - book['bids'][0]['price'], 2)
+
+
+
+    # Merge order_books. TODO: write this into a separate method.
+    ex = g.db['exchanges'].find_one(
+        {'name':'Coinsquare', 'book':book_name})
+    n_order_transfers = 0
+    old_bids = ex['bids']
+    for new_bid in book['bids']:
+        b_bid_match = False
+        for old_bid in old_bids:
+            if old_bid['price'] == new_bid['price'] and old_bid.get('bot_consumed'):
+                if new_bid['volume'] > old_bid['volume']:
+                    # New order. Old one must have been consumed.
+                    continue
+                # Assume same order. Update with any volume bot simulation consumed.
+                b_bid_match = True
+                new_bid['bot_consumed'] = old_bid['bot_consumed']
+                new_bid['bot_id'] = old_bid['bot_id']
+                new_bid['original'] = old_bid['original']
+                n_order_transfers += 1
+        if b_bid_match == False:
+            new_bid['original'] = new_bid['volume']
+
+    old_asks = ex['asks']
+    for new_ask in book['asks']:
+        b_ask_match = False
+        for old_ask in old_asks:
+            if old_ask['price'] == new_ask['price'] and old_ask.get('bot_consumed'):
+                if new_ask['volume'] > old_ask['volume']:
+                    # New order. Old one must have been consumed.
+                    continue
+                # Assume same order. Update with any volume bot simulation consumed.
+                b_ask_match = True
+                new_ask['bot_consumed'] = old_ask['bot_consumed']
+                new_ask['bot_id'] = old_ask['bot_id']
+                new_ask['original'] = old_ask['original']
+                n_order_transfers += 1
+        if b_ask_match == False:
+            new_ask['original'] = new_ask['volume']
+
+
+
+
+
+
+
+
+
+
+
 
     res = g.db['trades'].find(
         {'exchange':'Coinsquare', 'currency':trade}
