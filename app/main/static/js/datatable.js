@@ -32,7 +32,7 @@ holdings_fields = [
     {
         column: { title:'Pair' },
         columnDef: { },
-        data: { k:'currency', value:function(v){ return v.toUpperCase() } }
+        data: { k:'pair'}
     },
     {
         column: { title:'Status' },
@@ -42,22 +42,22 @@ holdings_fields = [
     {
         column: { title:'Trades' },
         columnDef: { },
-        data: { k:'volume' }
+        data: { k:'trades', value:function(v){ return v.length } }
     },
     {
-        column: { title:'Price' },
+        column: { title:'Buy Price' },
         columnDef: { },
         data: { k:'trades', sub_k:'0', value:function(v){ return '$'+num_format(v['price'],0) } }
     },
     {
-        column: { title:'Volume' },
+        column: { title:'Buy Volume' },
         columnDef: { },
-        data: { k:'volume' }
+        data: { k:'trades', value:function(v){ return v[0]['volume'][0]} }
     },
     {
         column: { title:'Cost' },
         columnDef: { },
-        data: { k:'cost' }
+        data: { k:'trades', value:function(v){ return '$'+v[0]['volume'][1]*-1 } }
     },
     {
         column: { title:'Sell Price (Avg)' },
@@ -68,12 +68,24 @@ holdings_fields = [
     {
         column: { title:'Balance' },
         columnDef: { },
-        data: { k:'volume' }
+        data: { k:'trades', value:function(v) {
+            var vol_bal=0;
+            for(var i=0; i<v.length; i++) {
+                vol_bal+=v[i]['volume'][0];
+            }
+            return num_format(vol_bal,5);
+        } }
     },
     {
         column: { title:'Revenue' },
         columnDef: { },
-        data: { k:'revenue' }
+        data: { k:'trades', value:function(v) {
+            var rev=0;
+            for(var i=1; i<v.length; i++) {
+                rev+=v[i]['volume'][1];
+            }
+            return '$'+num_format(rev,2);
+        } }
     },
     {
         column: { title:'Fees' },
@@ -85,11 +97,20 @@ holdings_fields = [
     {
         column: { title:'Net Earning' },
         columnDef:{ targets:13, render:function(data, type, row){
-            return data? '$'+num_format(data,2) :'' } 
+            return row[4]=='Closed'? '$'+num_format(data[1],2) : '' } 
         },
-        data: { k:'cad' }
+        data: { k:'balance'}
     }
 ];
+
+//------------------------------------------------------------------------------
+function oidToDate(oid) {
+    return new Date(parseInt(oid.substring(0,8),16)*1000);
+}
+
+//------------------------------------------------------------------------------
+function oidToTimestamp(oid) {
+}
 
 //------------------------------------------------------------------------------
 function init() {
@@ -106,26 +127,18 @@ function showBotSummary() {
         function(response){
             var stats = JSON.parse(response);
             console.log(stats);
-            var html = '';
-
-            html += '<h5 class="mt-3">Closed Holdings</h5>';
-            html += 'Total: ' + stats['n_hold_closed'] + '<br>';
-            html += 'Trades: ' + stats['n_trades']+'<br>';
-            html += 'Value: $' + abbr(stats['cad_traded'],0) + ' CAD<br>';
-            html += 'Earnings: $' + abbr(stats['earnings'],1) + ' CAD<br>';
-
-
-            html += '<h5 class="mt-3">Open Holdings</h5>';
-            html += 'Total: ' + stats['n_hold_open'] + '<br>';
-            html += 'Btc: ' + num_format(stats['btc'],5) + ' ~$'
-            + abbr(stats['btc_value'],1) + '<br>';
-            html += 'Eth: ' + num_format(stats['eth'],5) + ' ~$'
-            + abbr(stats['eth_value'],1) + '<br>';
+    
+            $('#earnings').html('$'+abbr(stats['earnings'],1));
+            $('#cad_traded').html('$'+abbr(stats['cad_traded'],1));
+            $('#btc').html(num_format(stats['btc'],5));
+            $('#eth').html(num_format(stats['eth'],5));
+            $('#n_hold_open').html(num_format(stats['n_hold_open']));
+            $('#n_hold_closed').html(num_format(stats['n_hold_closed']));
+            $('#n_trades').html(num_format(stats['n_trades']));
 
 
 
-
-            $('#stats').html(html);
+        
         }
     );
 }
@@ -209,6 +222,7 @@ function holdingsTable() {
         data=null,
         function(response){
             raw_data = JSON.parse(response);
+            console.log(raw_data);
             buildDataTable(
                 holdings_tbl_id,
                 holdings_fields.map(function(x){
@@ -217,6 +231,13 @@ function holdingsTable() {
                 formatData(raw_data));
             applyCss(holdings_tbl_id);
             $('#dt-holdings').prop('hidden',false);
+
+
+            var start = oidToDate(raw_data[0]['_id']['$oid']);
+            var end = oidToDate(raw_data[raw_data.length-1]['_id']['$oid']);
+            var duration = (end.getTime()-start.getTime())/1000/3600;
+            $('#duration').text($('#duration').text() + ' ' + num_format(duration,1) + ' Hrs');
+            console.log('duration: ' + simulation_duration);
         });
 }
 
