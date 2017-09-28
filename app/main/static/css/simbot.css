@@ -1,11 +1,28 @@
+
+/***** html tags *****/
+
+h1,h2,h3,h4,h5,thead {
+    font-family:proxima-nova,"proxima nova","helvetica neue",helvetica,arial,sans-serif;
+}
+thead tr th {
+    font-weight:normal;
+    border-bottom:none!important;
+    border-top:none!important;
+}
+td select.form-control {
+    padding: 0;
+}
+
+/***** simbot *****/
+
 .logo {
     color:#464a4c;
     font-family:sans-serif;
     letter-spacing:3px;
 }
 .banner {
- background-color:rgba(49,112,143,0);
- border-bottom:1px solid rgba(70, 74, 76, 0.35);
+    background-color:rgba(49,112,143,0);
+    border-bottom:1px solid rgba(70, 74, 76, 0.35);
 }
 .l-pane {
     height:100%;
@@ -14,35 +31,7 @@
 }
 .holdings-container {
     border:1px solid rgba(0, 0, 0, 0.14);
-    border-top-right-radius:5px;
-}
-table.dataTable {
-    max-width:100%!important;
-    border-collapse: collapse!important;
-    background-color:white;
-    border:1px solid rgba(0, 0, 0, 0.15);  
-}
-td select.form-control {
-    padding: 0;
-}
-thead tr th {
-    font-weight:normal;
-    border-bottom:none!important;
-    border-top:none!important;
-}
-#home .nav-link {
-  background-color: transparent;
-  color: #6a6c6f;
-}
-#home .nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link.active {
-	color: #464a4c;
-	border-bottom: 1px solid whitesmoke;
-	background-color: whitesmoke!important;
-}
-#dt-holdings {
-    width:100%!important;
-    padding:0;
-    margin:0!important;
+    border-radius:5px;
 }
 #dt-holdings_length label {
   margin-bottom:0;
@@ -50,3 +39,39 @@ thead tr th {
 #dt-holdings_filter label {
   margin-bottom:0;
 }
+.filters-row {
+    font-family:proxima-nova,"proxima nova","helvetica neue",helvetica,arial,sans-serif;
+    padding:.75rem .25rem;
+}
+.pages-row {
+    font-family:proxima-nova,"proxima nova","helvetica neue",helvetica,arial,sans-serif;
+    padding:.5rem 1.0rem;
+}
+
+/***** datatable.js overrides *****/
+
+.dataTables_wrapper {
+    border-radius:5px;
+    border:none;
+}
+.dataTables_paginate {
+    font-size: 0.875rem; 
+}
+table.dataTable {
+    width:100%!important;
+    max-width:100%!important;
+    border-collapse: collapse!important;
+    background-color:white;
+    border-top: 1px solid rgba(0, 0, 0, 0.15);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+    margin:0!important;
+    padding:0!important;
+}
+.dataTable thead, tbody {
+    width:100%!important;
+    max-width:100%!important;
+}
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(246, 246, 246, 0.4);
+}
+

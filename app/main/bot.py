@@ -254,23 +254,54 @@ class SimBot():
         return bal
 
     #---------------------------------------------------------------
+    def total_invested(self, exch=None, status=None):
+        query = {'bot_id':self._id}
+        if exch:
+            query['exchange'] = exch
+        if status:
+            query['status'] = status
+        cad_total = 0
+        holdings = g.db['holdings'].find(query)
+        for h in holdings:
+            cad_total += h['trades'][0]['volume'][1]
+        return cad_total
+
+    #---------------------------------------------------------------
+    def n_trades(self, exch=None, status=None):
+        query = {'bot_id':self._id}
+        if exch:
+            query['exchange'] = exch
+        if status:
+            query['status'] = status
+        n = 0
+        holdings = g.db['holdings'].find(query)
+        for h in holdings:
+            n += len(h['trades'])
+        return n
+    #---------------------------------------------------------------
     def stats(self, exch=None):
-        op_bal = self.balance(status='open')
-        cl_bal = self.balance(status='closed')
-        btc_val = op_bal['btc'] * get_ex(pair='btc_cad')[0]['bid']
-        eth_val = op_bal['eth'] * get_ex(pair='eth_cad')[0]['bid']
-        earn = cl_bal['cad'] - cl_bal['fees']
+
         n_open = len(self.holdings(status='open'))
+        op_bal = self.balance(status='open')
+        op_btc_val = op_bal['btc'] * get_ex(pair='btc_cad')[0]['bid']
+        op_eth_val = op_bal['eth'] * get_ex(pair='eth_cad')[0]['bid']
+
         n_closed = len(self.holdings(status='closed'))
+        cl_bal = self.balance(status='closed')
+
+        earn = cl_bal['cad'] - cl_bal['fees']
+        cad_invested = self.total_invested()
         btc_gain = op_bal['cad']
+
         return {
-            'n_open': n_open,
-            'n_closed': n_closed,
-            'cad': cl_bal['cad'],
+            'n_trades': self.n_trades(),
+            'n_hold_open': n_open,
+            'n_hold_closed': n_closed,
+            'cad_traded': cad_invested*-1,
             'btc': op_bal['btc'],
             'eth': op_bal['eth'],
-            'btc_value': btc_val,
-            'eth_value': eth_val,
+            'btc_value': op_btc_val,
+            'eth_value': op_eth_val,
             'earnings': earn
         }
 
