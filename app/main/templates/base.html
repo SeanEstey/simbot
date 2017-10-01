@@ -14,7 +14,13 @@
   </head>
   <body>
     <div id="content" class="container-fluid mx-auto m-0 p-0">
+      <!--Individual page content-->
       {% block content %}
+      {% endblock %}
+    </div>
+    <div id="templates" hidden>
+      <!--Div layouts of any objects inserted by jQuery-->
+      {% block templates %}
       {% endblock %}
     </div>
     <div id="post-libs">
@@ -25,3 +31,4 @@
     </div>
   </body>
 </html>
+<div id="BOOYAH">booyah!!</div>

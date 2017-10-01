@@ -1,28 +1,26 @@
-/* datatable.js  */
+/* main.js  */
 
-base_url = "http://45.79.176.125";
+BASE_URL = "http://45.79.176.125";
+TBL_ID = 'dt-holdings';
+
 num_format = Sugar.Number.format;
 abbr = Sugar.Number.abbr;
-data_tag = 'routes_new';
-raw_data = null;
-holdings_tbl_id = 'dt-holdings';
-bots_tbl_id = 'dt-bots';
-tbl_data = [];
-datatable = null;
-holdings_fields = [
+
+// Raw holdings data returned from server
+gHoldings = null;
+// Datatable instance
+gDatatable = null;
+// Column definitions for holdings datatable
+gColumnDefs = [
     {
-        column: {title:'_id'},
+        column: {title:'Timestamp'},
         columnDef: { targets:0, visible:false},
-        data: { k:'_id', sub_k:'$oid', value:function(v) {
-            return parseInt(v.substring(0,8),16)*1000}}
+        data: { k:'_id', sub_k:'$oid', value:function(oid) { return objectIdToTime(oid) } }
     },
     {
         column: { title:'Datetime&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'},
         columnDef: { targets:1 },
-        data: { k:'_id', sub_k:'$oid', value:function(v){
-            // Convert MongoDB ObjectId->js Date
-            return new Date(parseInt(v.substring(0,8),16)*1000).toLocaleString()}
-        }
+        data: { k:'_id', sub_k:'$oid', value:function(oid){ return objectIdToDate(oid).toLocaleString() } }
     },
     {
         column: { title:'Exchange' },
@@ -104,19 +102,10 @@ holdings_fields = [
 ];
 
 //------------------------------------------------------------------------------
-function oidToDate(oid) {
-    return new Date(parseInt(oid.substring(0,8),16)*1000);
-}
-
-//------------------------------------------------------------------------------
-function oidToTimestamp(oid) {
-}
-
-//------------------------------------------------------------------------------
 function init() {
     showBotSummary();
-    showExchSummary();
-    holdingsTable();
+    showExchTickers();
+    showHoldingsTable();
 }
 
 //------------------------------------------------------------------------------
@@ -126,8 +115,6 @@ function showBotSummary() {
         null,
         function(response){
             var stats = JSON.parse(response);
-            console.log(stats);
-    
             $('#earnings').html('$'+abbr(stats['earnings'],1));
             $('#cad_traded').html('$'+abbr(stats['cad_traded'],1));
             $('#btc').html(num_format(stats['btc'],5));
@@ -135,16 +122,12 @@ function showBotSummary() {
             $('#n_hold_open').html(num_format(stats['n_hold_open']));
             $('#n_hold_closed').html(num_format(stats['n_hold_closed']));
             $('#n_trades').html(num_format(stats['n_trades']));
-
-
-
-        
         }
     );
 }
 
 //------------------------------------------------------------------------------
-function showExchSummary() {
+function showExchTickers() {
     api_call(
         '/tickers/get',
         null,
@@ -216,50 +199,48 @@ function showExchSummary() {
 }
 
 //------------------------------------------------------------------------------
-function holdingsTable() {
+function showHoldingsTable() {
     api_call(
         '/holdings/get',
         data=null,
         function(response){
-            raw_data = JSON.parse(response);
-            console.log(raw_data);
+            gHoldings = JSON.parse(response);
+
             buildDataTable(
-                holdings_tbl_id,
-                holdings_fields.map(function(x){
+                TBL_ID,
+                gColumnDefs.map(function(x){
                     return x.column
                 }),
-                formatData(raw_data));
-            applyCss(holdings_tbl_id);
-            $('#dt-holdings').prop('hidden',false);
+                gColumnDefs.map(function(x){
+                    return x.columnDef ? x.columnDef : false; 
+                }),
+                formatData()
+            );
 
-
-            var start = oidToDate(raw_data[0]['_id']['$oid']);
-            var end = oidToDate(raw_data[raw_data.length-1]['_id']['$oid']);
-            var duration = (end.getTime()-start.getTime())/1000/3600;
-            $('#duration').text($('#duration').text() + ' ' + num_format(duration,1) + ' Hrs');
-            console.log('duration: ' + simulation_duration);
+            applyCustomization(TBL_ID);
+            calcSimDuration();
         });
 }
 
 //------------------------------------------------------------------------------
-function buildDataTable(id, columns, data ) {
-    datatable = $('#'+id).DataTable({ //.removeAttr('width').DataTable({
-        data: data,
-        columns: columns,
+function buildDataTable(tbl_id, tbl_cols, tbl_col_defs, tbl_data ) {
+    gDatatable = $('#'+tbl_id).DataTable({
+        data: tbl_data,
+        columns: tbl_cols,
         order: [[0,'desc']],
-        columnDefs: holdings_fields.map(function(x){ return x.columnDef ? x.columnDef : false; }),
+        columnDefs: tbl_col_defs, 
         fixedColumns: true,
         responsive:true,
         select:false,
         lengthMenu: [[10, 50, 100,-1], [10, 50, 100, "All"]]
     });
-    //datatable.columns.adjust().draw();
 }
 
 //------------------------------------------------------------------------------
-function applyCss(_id) {
+function applyCustomization(_id) {
     var wrap = format('#%s_wrapper', _id);
     var $filtr_row = $(wrap+' .row:nth-child(1)');
+    var $tbl_row = $(wrap+' .row:nth-child(2)');
     var $pages_row = $(wrap+' .row:nth-child(3)');
 
     $filtr_row
@@ -271,43 +252,79 @@ function applyCss(_id) {
         .removeClass('col-md-6 col-sm-12');
     $('.dataTables_length')
         .removeClass('col-md-9');
-
     var $a = $('select[name="dt-holdings_length"]').parent();
     $a.html($a.html().replace("Show","").replace("entries"," /Page"))
     $('.dataTables_length label').appendTo($('#filters'));
     $('.dataTables_length').append($('#filters'));
+    $('.filters-row').append($('#min-max'));
+    $('#min-max').prop('hidden',false);
     $('#filters').prop('hidden',false);
 
+    $tbl_row.prop('id','tbl-row');
+    $tbl_row.addClass('collapse show');
+
     $pages_row.addClass('pages-row');
+
     $('.holdings-container').prop('hidden',false)
-
     $('.dataTables_info').html($('.dataTables_info').html().replace("Showing ",""));
-
     $('#'+_id).parent().css('padding','0');
     $('#'+_id).parent().css('margin','0');
+
+    $('#dt-holdings').prop('hidden',false);
+
+    // Minimize/maximize pane styling
+	$('div')
+        .on('shown.bs.collapse', function() {
+
+            var id = $(this).prop('id');
+            console.log('id='+id+', class='+$(this).prop('class'));
+            if(['tbl-row'].indexOf(id) > -1) {
+                $('#min-max i')
+                    .removeClass('fa-window-maximize')
+                    .addClass('fa-window-minimize');
+                }
+		})
+        .on('hidden.bs.collapse', function() {
+			var id = $(this).prop('id');
+            console.log('id='+id+', class='+$(this).prop('class'));
+			if(['tbl-row'].indexOf(id) > -1) {
+                $('#min-max i')
+                    .removeClass('fa-window-minimize')
+                    .addClass('fa-window-maximize');
+			}
+		});
 }
 
 //------------------------------------------------------------------------------
-function formatData(data) {
+function calcSimDuration() {
+    var start = objectIdToDate(gHoldings[0]['_id']['$oid']);
+    var end = objectIdToDate(gHoldings[gHoldings.length-1]['_id']['$oid']);
+    var duration = (end.getTime()-start.getTime())/1000/3600;
+    $('#duration').text($('#duration').text() + ' ' + num_format(duration,1) + ' Hrs');
+}
+
+//------------------------------------------------------------------------------
+function formatData() {
+    var tbl_data = [];
     var get = Sugar.Object.get;
 
     // Convert response data to datatable data format
-    for(var i=0; i<data.length; i++) {
-        var route = data[i];
+    for(var i=0; i<gHoldings.length; i++) {
+        var holding = gHoldings[i];
         var tbl_row = [];
 
-        for(var j=0; j<holdings_fields.length; j++) {
-            var k = holdings_fields[j]['data']['k'];
-            var sub_k = holdings_fields[j]['data']['sub_k'];
+        for(var j=0; j<gColumnDefs.length; j++) {
+            var k = gColumnDefs[j]['data']['k'];
+            var sub_k = gColumnDefs[j]['data']['sub_k'];
             var val = '';
 
-            if(!sub_k && get(route, k))
-                val = route[k];
-            else if(sub_k && get(route[k], sub_k))
-                val = route[k][sub_k];
+            if(!sub_k && get(holding, k))
+                val = holding[k];
+            else if(sub_k && get(holding[k], sub_k))
+                val = holding[k][sub_k];
 
-            if(holdings_fields[j]['data'].hasOwnProperty('value'))
-                val = holdings_fields[j]['data']['value'](val);
+            if(gColumnDefs[j]['data'].hasOwnProperty('value'))
+                val = gColumnDefs[j]['data']['value'](val);
 
             tbl_row.push(val);
         }
@@ -320,17 +337,17 @@ function formatData(data) {
 function filterDates(start, end) {
     var filtered = [];
 
-    for(var i=0; i<raw_data.length; i++) {
-        var route = raw_data[i];
-        var date = new Date(route['date']['$date']);
+    for(var i=0; i<data.length; i++) {
+        var holdings = data[i];
+        var date = new Date(holdings['date']['$date']);
         if(start && date < start)
             continue;
         if(end && date > end)
             continue;
-        filtered.push(route);
+        filtered.push(holdings);
     }
 
-    console.log(format('%s routes filtered between %s to %s',
+    console.log(format('%s holdingss filtered between %s to %s',
         filtered.length,
         start ? start.strftime('%b-%d-%Y') : 'anytime',
         end ? end.strftime('%b-%d-%Y') : 'anytime'));
@@ -340,7 +357,7 @@ function filterDates(start, end) {
 //------------------------------------------------------------------------------
 function api_call(path, data, on_done) {
     $.ajax(
-        { type:'POST', data:data, url:base_url + path }
+        { type:'POST', data:data, url:BASE_URL + path }
     )
     .done(function(response){
         on_done(response);
@@ -348,4 +365,16 @@ function api_call(path, data, on_done) {
     .fail(function(response){
         on_done(response)
     });
+}
+
+//------------------------------------------------------------------------------
+function objectIdToDate(oid) {
+    /* MongoDB ObjectId->Date */
+    return new Date(parseInt(oid.substring(0,8),16)*1000);
+}
+
+//------------------------------------------------------------------------------
+function objectIdToTime(oid) {
+    /* MongoDB ObjectId->Timestamp (ms) */
+    return parseInt(oid.substring(0,8),16)*1000;
 }
