@@ -4,17 +4,17 @@ Bitcoin/Ethereum trading bot supporting live and simulated trading w/ full clien
 
 Trading logic follows ping-pong (buy low/sell high) and cross-exchange arbitrage. Earning statistics are tracked for each price/volume holding. Settings can be adjusted in config.py.
 
-Live trading exchange API's supported: QuadrigaCX (BTC/CAD, ETH/CAD)
-
 ### Simulation Mode
 
-Simulated trading from real-time order book data.
+Real-time trading simulation using live order book data.
+Supported: QuadrigaCX [BTC/CAD, ETH/CAD], Coinsquare [BTC/CAD]
 
 ### Live Mode
 
-Supported exchanges: QuadrigaCX (BTC/CAD and ETH/CAD)
+Supported exchanges: QuadrigaCX [BTC/CAD, ETH/CAD]
 
-SMS alerts are sent for arbitrage on Coinsquare (no API currently) if there is an ask order price greater than the bid price on QuadrigaCX.
+SMS alerts are sent for arbitrage opportunities on unsupported exchanges.
+Monitored exchanges: Coinsquare [BTC/CAD]
 
 ## Setup
 
