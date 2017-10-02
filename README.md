@@ -7,6 +7,7 @@ Trading logic follows ping-pong (buy low/sell high) and cross-exchange arbitrage
 ### Simulation Mode
 
 Real-time trading simulation using live order book data.
+
 Supported: QuadrigaCX [BTC/CAD, ETH/CAD], Coinsquare [BTC/CAD]
 
 ### Live Mode
@@ -14,6 +15,7 @@ Supported: QuadrigaCX [BTC/CAD, ETH/CAD], Coinsquare [BTC/CAD]
 Supported exchanges: QuadrigaCX [BTC/CAD, ETH/CAD]
 
 SMS alerts are sent for arbitrage opportunities on unsupported exchanges.
+
 Monitored exchanges: Coinsquare [BTC/CAD]
 
 ## Setup
@@ -23,7 +25,7 @@ Monitored exchanges: Coinsquare [BTC/CAD]
 git clone https://github.com/SeanEstey/simbot
 cd simbot
 ```
-2. Install Ubuntu and python packages in requirements/
+2. Install dependencies from pkg_list.txt and requirements.txt in simbot/requirements/
 3. Run setup.py
 4. Create MongoDB credentials file /simbot/db_auth.py:
 ```
