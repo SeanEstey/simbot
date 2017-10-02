@@ -1,6 +1,8 @@
 ## Overview
 
-Bitcoin/Ethereum trading bot supporting live and simulated trading. BTC/CAD and ETH/CAD trades currently supported. Full client UI available. Trading logic follows ping-pong (buy low/sell high) and cross-exchange arbitrage. Earning statistics are tracked for each price/volume holding. Settings can be adjusted in config.py.
+Bitcoin/Ethereum trading bot supporting live and simulated trading w/ full client UI support.
+
+Trading logic follows ping-pong (buy low/sell high) and cross-exchange arbitrage. Earning statistics are tracked for each price/volume holding. Settings can be adjusted in config.py.
 
 Live trading exchange API's supported: QuadrigaCX (BTC/CAD, ETH/CAD)
 
