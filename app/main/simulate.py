@@ -5,6 +5,7 @@ from flask import g
 from app.main import exch_conf, pair_conf
 from app.lib.timer import Timer
 from bson import ObjectId as oid
+from . import books
 log = logging.getLogger(__name__)
 
 #---------------------------------------------------------------
@@ -83,7 +84,8 @@ class SimBot():
     def add_trade(self, exch, pair, _type, price, pair_vol, holding=None):
         """Add a BUY/SELL trade to given holding, closing it if
         sell balance reaches 0.
-        @pair_vol: list w/ float pair (i.e [0.1111,-500.00] for
+
+        :pair_vol: list w/ float pair (i.e [0.1111,-500.00] for
         buy order of BTC priced in CAD
         """
         fee_pct = exch_conf(exch)['TRADE_FEE'][pair]
@@ -114,7 +116,7 @@ class SimBot():
         gain_vol = round(min(max_vol, ask_vol),5)
         loss_vol = round(ask*gain_vol,2)
 
-        self.update_order_book(exch, pair, 'asks', gain_vol)
+        books.update(exch, pair, 'asks', self._id, gain_vol)
 
         holding = self.add_trade(
             exch,
@@ -137,7 +139,7 @@ class SimBot():
         loss_vol = min(balance[0], bid_vol)
         gain_vol = round(bid*loss_vol,2)
 
-        self.update_order_book(holding['exchange'], holding['pair'], 'bids', loss_vol)
+        books.update(holding['exchange'], holding['pair'], 'bids', self._id, loss_vol)
 
         holding = self.add_trade(
             holding['exchange'],
@@ -209,6 +211,71 @@ class SimBot():
                     ask['volume'])
 
     #---------------------------------------------------------------
+    def eval_arbitrage(self):
+        """Make cross-exchange trade if bid/ask ratio > 1.
+        """
+        r = g.db['exchanges'].aggregate([
+            {'$group':{'_id':'$book', 'min_ask':{'$min':'$ask'}, 'max_bid':{'$max':'$bid'}}}])
+
+        for book in list(r):
+            if book['max_bid']/book['min_ask'] <= 1:
+                continue
+
+            buy_ex = g.db['exchanges'].find_one({'ask':book['min_ask']})
+            sell_ex = g.db['exchanges'].find_one({'bid':book['max_bid']})
+            pair = buy_ex['book']
+
+            buy_order = buy_ex['asks'][0]
+            sell_order = sell_ex['bids'][0]
+
+            buy_vol_rem = buy_order['original'] - buy_order.get('bot_consumed',0)
+            sell_vol_rem = sell_order['original'] - sell_order.get('bot_consumed',0)
+            vol = min(buy_vol_rem, sell_vol_rem)
+
+            buy_p = buy_ex['asks'][0]['price']
+            sell_p = sell_ex['bids'][0]['price']
+
+            # Calculate net earning
+            buy_f = self.calc_fee(buy_ex['name'], pair, buy_p, vol)
+            sell_f = self.calc_fee(sell_ex['name'], pair, sell_p, vol)
+            pdiff = round(book['max_bid'] - book['min_ask'],2)
+            earn = round(pdiff*vol,2)
+            fees = round(buy_f+sell_f,2)
+            net_earn = round(earn-fees,2)
+            if net_earn <= 0:
+                continue
+
+            log.debug('%s=>%s pdiff=%s, v=%s, earn=%s, fees=%s, net_earn=%s',
+                buy_ex['name'], sell_ex['name'], pdiff, vol, earn, fees, net_earn)
+
+            ### WRITE ME ###
+            # Balance checks:
+            #   ex-A: CAD >= buy_p*vol
+            #   ex-B: BTC >= vol
+
+            holding = self.buy_market_order(
+                buy_ex['name'],
+                pair,
+                buy_p,
+                vol,
+                vol_cap=False)
+
+            # Transfer holding
+            holding['exchange'] = sell_ex['name']
+
+            self.sell_market_order(
+                holding,
+                sell_p,
+                vol)
+
+            ### WRITE ME ###
+            # Balance accounts:
+            #   ex-A: transfer BTC=>ex-B
+            #   ex-B: transfer CAD=>ex-A
+
+            log.info('TRADE complete, net_earn=%s', net_earn)
+
+    #---------------------------------------------------------------
     def balance(self, exch=None, status=None):
         """Returns dict: {'cad':float, 'btc':float}
         """
@@ -277,6 +344,7 @@ class SimBot():
         for h in holdings:
             n += len(h['trades'])
         return n
+
     #---------------------------------------------------------------
     def stats(self, exch=None):
         n_open = len(self.holdings(status='open'))
@@ -302,90 +370,6 @@ class SimBot():
             'eth_value': op_eth_val,
             'earnings': earn
         }
-
-    #---------------------------------------------------------------
-    def eval_arbitrage(self):
-        """Make cross-exchange trade if bid/ask ratio > 1.
-        """
-        r = g.db['exchanges'].aggregate([
-            {'$group':{'_id':'$book', 'min_ask':{'$min':'$ask'}, 'max_bid':{'$max':'$bid'}}}])
-
-        for book in list(r):
-            if book['max_bid']/book['min_ask'] <= 1:
-                continue
-
-            buy_ex = g.db['exchanges'].find_one({'ask':book['min_ask']})
-            sell_ex = g.db['exchanges'].find_one({'bid':book['max_bid']})
-            pair = buy_ex['book']
-
-            buy_order = buy_ex['asks'][0]
-            sell_order = sell_ex['bids'][0]
-
-            buy_vol_rem = buy_order['original'] - buy_order.get('bot_consumed',0)
-            sell_vol_rem = sell_order['original'] - sell_order.get('bot_consumed',0)
-            vol = min(buy_vol_rem, sell_vol_rem)
-
-            buy_p = buy_ex['asks'][0]['price']
-            sell_p = sell_ex['bids'][0]['price']
-
-            # Calculate net earning
-            buy_f = self.calc_fee(buy_ex['name'], pair, buy_p, vol)
-            sell_f = self.calc_fee(sell_ex['name'], pair, sell_p, vol)
-            pdiff = round(book['max_bid'] - book['min_ask'],2)
-            earn = round(pdiff*vol,2)
-            fees = round(buy_f+sell_f,2)
-            net_earn = round(earn-fees,2)
-            if net_earn <= 0:
-                continue
-
-            log.debug('%s=>%s pdiff=%s, v=%s, earn=%s, fees=%s, net_earn=%s',
-                buy_ex['name'], sell_ex['name'], pdiff, vol, earn, fees, net_earn)
-
-            ### WRITE ME ###
-            # Balance checks:
-            #   ex-A: CAD >= buy_p*vol
-            #   ex-B: BTC >= vol
-
-            holding = self.buy_market_order(
-                buy_ex['name'],
-                pair,
-                buy_p,
-                vol,
-                vol_cap=False)
-
-            # Transfer holding
-            holding['exchange'] = sell_ex['name']
-
-            self.sell_market_order(
-                holding,
-                sell_p,
-                vol)
-
-            ### WRITE ME ###
-            # Balance accounts:
-            #   ex-A: transfer BTC=>ex-B
-            #   ex-B: transfer CAD=>ex-A
-
-            log.info('TRADE complete, net_earn=%s', net_earn)
-
-    #---------------------------------------------------------------
-    def update_order_book(self, ex_name, ex_book, order_book, loss_vol):
-        ex = g.db['exchanges'].find_one(
-            {'name':ex_name, 'book':ex_book})
-        order = ex[order_book][0]
-
-        if order.get('bot_consumed'):
-            order['bot_consumed'] += loss_vol
-        else:
-            order['bot_consumed'] = loss_vol
-        order['bot_id'] = self._id
-
-        ex[order_book][0] = order
-
-        g.db['exchanges'].update_one(
-            {'_id':ex['_id']},
-            {'$set':{order_book: ex[order_book]}
-        })
 
     #---------------------------------------------------------------
     def calc_limit_imbalance(self, exch=None):

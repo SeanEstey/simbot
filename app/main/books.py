@@ -5,8 +5,36 @@ from app.lib.timer import Timer
 log = getLogger(__name__)
 
 #-------------------------------------------------------------------------------
+def update(ex_name, pair, section, bot_id, vol_consumed):
+    """Update order book w/ simulated order.
+
+    :pair: currency pair str ('btc_cad', 'eth_cad', etc)
+    :section: order book section str ('bids' or 'asks')
+    """
+    ex = g.db['exchanges'].find_one({'name':ex_name, 'book':pair})
+
+    order = ex[section][0]
+
+    if order.get('bot_consumed'):
+        order['bot_consumed'] += vol_consumed
+    else:
+        order['bot_consumed'] = vol_consumed
+
+    order['bot_id'] = bot_id
+
+    ex[section][0] = order
+
+    g.db['exchanges'].update_one(
+        {'_id':ex['_id']},
+        {'$set':{
+            section: ex[section]
+        }}
+    )
+
+#-------------------------------------------------------------------------------
 def merge(orders, ex_name, book_name, base, trade, spread):
-    """Merge order book data modified by simulations w/ new data.
+    """Merge refreshed order book data w/ data modified by simulations.
+
     :orders: new orderbook data dict {'bids':[], 'asks':[]}
     """
 
