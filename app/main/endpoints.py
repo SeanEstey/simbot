@@ -5,7 +5,7 @@ from flask import g, request
 log = logging.getLogger(__name__)
 from . import main
 from . import quadcx, coinsquare
-from .bot import SimBot
+from .simulate import SimBot
 
 @main.route('/stats/get', methods=['POST'])
 def get_earnings():
@@ -43,3 +43,19 @@ def _update_books():
         quadcx.update_books()
 
     return 'OK'
+
+@main.route('/test/quadcxapi', methods=['GET'])
+def _test_quadcx_api():
+    """gary_api = g.db['bots'].find_one({'name':'Gary'})['api'][0]
+    from app.quadriga import QuadrigaClient
+    client = QuadrigaClient(
+        api_key=gary_api['key'],
+        api_secret=gary_api['secret'],
+        client_id=64288,
+        default_book='btc_cad'
+     )
+    #log.debug(client.get_summary())
+    #log.debug(client.get_public_orders())
+    #log.debug(client.get_trades(limit=5))
+    """
+    pass

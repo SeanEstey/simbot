@@ -6,19 +6,24 @@ from logging import getLogger
 from flask import g
 from app.lib.timer import Timer
 from app.main import exch_conf
+from . import books
 log = getLogger(__name__)
 
 #-------------------------------------------------------------------------------
 def update(base, trade):
+    """Update order books and ticker.
+    :base, trade: currency names
+    """
     book_name = '%s_%s' %(trade, base)
-    update_book(book_name.lower(), base, trade)
+    update_order_book(book_name.lower(), base.lower(), trade.lower())
+    update_ticker(book_name.lower(), base.lower(), trade.lower())
 
 #-------------------------------------------------------------------------------
-def update_book(book_name, base, trade):
+def update_order_book(book_name, base, trade):
     conf = exch_conf('Coinsquare')
     t1 = Timer()
     try:
-        data = requests.get(conf['BOOK_URL'] % (base,trade))
+        data = requests.get(conf['BOOK_URL'] % (base.upper(),trade.upper()))
     except Exception as e:
         log.exception('Coinsquare orderbook request failed: %s', str(e))
         return False
@@ -46,57 +51,14 @@ def update_book(book_name, base, trade):
 
     spread = round(book['asks'][0]['price'] - book['bids'][0]['price'], 2)
 
+    books.merge(book, 'Coinsquare', book_name, base, trade, spread)
 
+    pprint('Coinsquare bid=%s, ask=%s, spread=%s [%sms]' %(
+        book['bids'][0]['price'], book['asks'][0]['price'], spread, t1.clock(t='ms')))
 
-    # Merge order_books. TODO: write this into a separate method.
-    ex = g.db['exchanges'].find_one(
-        {'name':'Coinsquare', 'book':book_name})
-    n_order_transfers = 0
-    old_bids = ex['bids']
-    for new_bid in book['bids']:
-        b_bid_match = False
-        for old_bid in old_bids:
-            if old_bid['price'] == new_bid['price'] and old_bid.get('bot_consumed'):
-                if new_bid['volume'] > old_bid['volume']:
-                    # New order. Old one must have been consumed.
-                    continue
-                # Assume same order. Update with any volume bot simulation consumed.
-                b_bid_match = True
-                new_bid['bot_consumed'] = old_bid['bot_consumed']
-                new_bid['bot_id'] = old_bid['bot_id']
-                new_bid['original'] = old_bid['original']
-                n_order_transfers += 1
-        if b_bid_match == False:
-            new_bid['original'] = new_bid['volume']
-
-    old_asks = ex['asks']
-    for new_ask in book['asks']:
-        b_ask_match = False
-        for old_ask in old_asks:
-            if old_ask['price'] == new_ask['price'] and old_ask.get('bot_consumed'):
-                if new_ask['volume'] > old_ask['volume']:
-                    # New order. Old one must have been consumed.
-                    continue
-                # Assume same order. Update with any volume bot simulation consumed.
-                b_ask_match = True
-                new_ask['bot_consumed'] = old_ask['bot_consumed']
-                new_ask['bot_id'] = old_ask['bot_id']
-                new_ask['original'] = old_ask['original']
-                n_order_transfers += 1
-        if b_ask_match == False:
-            new_ask['original'] = new_ask['volume']
-
-
-
-
-
-
-
-
-
-
-
-
+#-------------------------------------------------------------------------------
+def update_ticker(book_name, base, trade):
+    """
     res = g.db['trades'].find(
         {'exchange':'Coinsquare', 'currency':trade}
     ).sort('$natural',-1).limit(1)
@@ -104,22 +66,5 @@ def update_book(book_name, base, trade):
         last = res[0]['price']
     else:
         last = False
-
-    # TODO: find 'high', 'low', 'volume', etc values somwhere
-    g.db['exchanges'].update_one(
-        {'name':'Coinsquare', 'book':book_name},
-        {'$set':{
-            'name':'Coinsquare',
-            'base':base.lower(),
-            'trade':trade.lower(),
-            'book':book_name,
-            'bid':book['bids'][0]['price'],
-            'last':last,
-            'ask':book['asks'][0]['price'],
-            'spread':spread,
-            'bids':book['bids'],
-            'asks':book['asks']
-        }},
-        True)
-    pprint('Coinsquare bid=%s, ask=%s, spread=%s [%sms]' %(
-        book['bids'][0]['price'], book['asks'][0]['price'], spread, t1.clock(t='ms')))
+    """
+    pass

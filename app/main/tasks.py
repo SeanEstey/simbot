@@ -5,13 +5,12 @@ from app import celery
 from flask import g
 from app.lib.timer import Timer
 log = logging.getLogger(__name__)
-from app.main.bot import SimBot
+from app.main.simulate import SimBot
 from app.main import quadcx, coinsquare
 
 #-------------------------------------------------------------------------------
 @celery.task(bind=True)
 def update(self, **rest):
-
     # Update market data
     quadcx.update('CAD','BTC')
     quadcx.update('CAD','ETH')
@@ -22,26 +21,3 @@ def update(self, **rest):
     gary.eval_bids()
     gary.eval_asks()
     gary.eval_arbitrage()
-
-    """gary_api = g.db['bots'].find_one({'name':'Gary'})['api'][0]
-    from app.quadriga import QuadrigaClient
-    client = QuadrigaClient(
-        api_key=gary_api['key'],
-        api_secret=gary_api['secret'],
-        client_id=64288,
-        default_book='btc_cad'
-     )
-    #log.debug(client.get_summary())
-    #log.debug(client.get_public_orders())
-    #log.debug(client.get_trades(limit=5))
-    """
-
-    balance = gary.balance()
-    stats = gary.stats()
-
-    #log.info('Garybot earnings=$%s', round(stats['earnings'],2))
-
-    """, cad=$%s, btc=%s, buys=%s, sells=%s, ',
-      round(stats['earnings'],2), round(balance['cad'],2), round(balance['btc'],5),
-        stats['n_buy_orders'], stats['n_sell_orders'])
-    """

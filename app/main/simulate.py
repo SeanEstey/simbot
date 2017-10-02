@@ -37,7 +37,6 @@ def create(name, start_cad, buy_margin, sell_margin):
 
     log.info('Created %s bot w/ $%s balance', name, start_cad)
 
-
 ########################### Class: SimBot ##########################
 class SimBot():
     """TODO: determine volatility, adjust buy/sell margins dynamically.
@@ -280,7 +279,6 @@ class SimBot():
         return n
     #---------------------------------------------------------------
     def stats(self, exch=None):
-
         n_open = len(self.holdings(status='open'))
         op_bal = self.balance(status='open')
         op_btc_val = op_bal['btc'] * get_ex(pair='btc_cad')[0]['bid']
