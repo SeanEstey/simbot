@@ -111,6 +111,8 @@ class SimBot():
 
     #---------------------------------------------------------------
     def buy_market_order(self, exch, pair, ask, ask_vol, vol_cap=True):
+        # TODO: Ignores bot_consumed volume. Cap max gain_vol at
+        # original - bot_consumed
         # WRITEME: handle eating through > 1 orders
         max_vol = pair_conf(pair)['MAX_VOL'] if vol_cap else ask_vol
         gain_vol = round(min(max_vol, ask_vol),5)
@@ -178,8 +180,8 @@ class SimBot():
             if margin >= self.rules['sell_margin']:
                 self.sell_market_order(holding, bid['price'], bid['volume'])
 
-            log.debug('holding #%s, exch=%s, p=%s, bid=%s, m=%s',
-                i+1, holding['exchange'], holding['trades'][0]['price'], bid['price'], margin)
+            #log.debug('holding #%s, exch=%s, p=%s, bid=%s, m=%s',
+            #    i+1, holding['exchange'], holding['trades'][0]['price'], bid['price'], margin)
 
     #---------------------------------------------------------------
     def eval_asks(self):
@@ -224,17 +226,15 @@ class SimBot():
             buy_ex = g.db['exchanges'].find_one({'ask':book['min_ask']})
             sell_ex = g.db['exchanges'].find_one({'bid':book['max_bid']})
             pair = buy_ex['book']
-
-            buy_order = buy_ex['asks'][0]
-            sell_order = sell_ex['bids'][0]
-
-            buy_vol_rem = buy_order['original'] - buy_order.get('bot_consumed',0)
-            sell_vol_rem = sell_order['original'] - sell_order.get('bot_consumed',0)
-            vol = min(buy_vol_rem, sell_vol_rem)
-
+            # Match order volume for cross-exchange trade
+            vol = min(
+                books.order_vol(buy_ex['name'], pair, 'asks'),
+                books.order_vol(sell_ex['name'], pair, 'bids')
+            )
+            if vol == 0:
+                continue
             buy_p = buy_ex['asks'][0]['price']
             sell_p = sell_ex['bids'][0]['price']
-
             # Calculate net earning
             buy_f = self.calc_fee(buy_ex['name'], pair, buy_p, vol)
             sell_f = self.calc_fee(sell_ex['name'], pair, sell_p, vol)
@@ -242,11 +242,17 @@ class SimBot():
             earn = round(pdiff*vol,2)
             fees = round(buy_f+sell_f,2)
             net_earn = round(earn-fees,2)
+
             if net_earn <= 0:
                 continue
 
             log.debug('%s=>%s pdiff=%s, v=%s, earn=%s, fees=%s, net_earn=%s',
                 buy_ex['name'], sell_ex['name'], pdiff, vol, earn, fees, net_earn)
+
+            if net_earn >= 100:
+                log.warning('%s earnings arbitrage window! %s=>%s',
+                    net_earn, buy_ex['name'], sell_ex['name'])
+                # TODO: Send SMS text
 
             ### WRITE ME ###
             # Balance checks:
