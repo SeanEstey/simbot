@@ -18,6 +18,7 @@ ENV_VARS = [
     'HTTP_HOST',
     'TEST'
 ]
+SMS_ALERT_NUMBER = "+17808635715"
 EXCHANGES = [
     {
         'NAME': 'Coinsquare',

@@ -95,7 +95,7 @@ gColumnDefs = [
     {
         column: { title:'Net Earning' },
         columnDef:{ targets:13, render:function(data, type, row){
-            return row[4]=='Closed'? '$'+num_format(data[1],2) : '' } 
+            return row[4]=='Closed'? '$'+num_format(data[1]-row[12],2) : '' } 
         },
         data: { k:'balance'}
     }

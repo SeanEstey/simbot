@@ -10,7 +10,8 @@ celery
 cryptography
 eventlet
 Flask
-gdax
+Flask-Login
+Flask-SocketIO
 httplib2
 ipaddress
 Jinja2
@@ -22,6 +23,7 @@ python-dateutil
 pyopenssl
 pytz
 requests
+twilio==6.3.0
 urllib3
 websocket-client
 Werkzeug

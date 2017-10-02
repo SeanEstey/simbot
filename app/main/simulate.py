@@ -1,11 +1,12 @@
 """Class: SimBot
 """
 import logging
-from flask import g
+from flask import g, current_app
 from app.main import exch_conf, pair_conf
 from app.lib.timer import Timer
 from bson import ObjectId as oid
 from . import books
+from app.main.sms import compose
 log = logging.getLogger(__name__)
 
 #---------------------------------------------------------------
@@ -250,9 +251,10 @@ class SimBot():
                 buy_ex['name'], sell_ex['name'], pdiff, vol, earn, fees, net_earn)
 
             if net_earn >= 100:
-                log.warning('%s earnings arbitrage window! %s=>%s',
+                msg = '%s earnings arbitrage window! %s=>%s' %(
                     net_earn, buy_ex['name'], sell_ex['name'])
-                # TODO: Send SMS text
+                log.warning(msg)
+                compose(msg, current_app.config['SMS_ALERT_NUMBER'])
 
             ### WRITE ME ###
             # Balance checks:

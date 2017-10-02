@@ -1,9 +1,8 @@
-'''app.__init__'''
+# app __init__
 import logging, os
-from flask import Flask, g, session, has_app_context, has_request_context
+from flask import g, Flask
 from celery import Celery
 
-# GLOBALS
 celery = Celery(__name__, broker='amqp://')
 from app.uber_task import UberTask
 celery.Task = UberTask
@@ -30,8 +29,9 @@ class colors:
     UNDERLINE = '\033[4m'
 
 #-------------------------------------------------------------------------------
-def create_app(pkg_name, kv_sess=True, mongo_client=True):
-
+def create_app(pkg_name, mongo_client=True):
+    """Create Flask app/blueprints, setup DB and logging.
+    """
     from werkzeug.contrib.fixers import ProxyFix
     from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
     from config import LOG_PATH as path
@@ -69,8 +69,25 @@ def create_app(pkg_name, kv_sess=True, mongo_client=True):
     app.register_blueprint(main_mod)
     from app.quadriga import quadcx as quadcx_mod
     app.register_blueprint(quadcx_mod)
-
     return app
+
+#-------------------------------------------------------------------------------
+def get_key(name, k=None):
+    """Return API key.
+
+    :name: key name
+    """
+    conf = g.db['keys'].find_one({'name':name})
+
+    if conf is None:
+        log.exception('No key document found with name=%s', name)
+        raise
+
+    if k and k not in conf:
+        log.exception('Subkey=%s not found in name=%s', k, name)
+        raise
+
+    return conf if not k else conf[k]
 
 #---------------------------------------------------------------------------
 def file_handler(level, file_path,

@@ -39,15 +39,15 @@ def update_order_book(book_name, base, trade):
 
     for ask in asks:
         dollars = float(ask['amt'])/100
-        volume = round(float(ask['base'])/100000000, 5)
+        volume = float(ask['base'])/100000000
         price = round(dollars/volume,2)
-        book['asks'].append({'price':price, 'volume':volume})
+        book['asks'].append({'price':price, 'volume':round(volume,5)})
 
     for bid in bids:
         dollars = float(bid['amt'])/100
-        volume = round(float(bid['base'])/100000000, 5)
+        volume = float(bid['base'])/100000000
         price = round(dollars/volume,2)
-        book['bids'].append({'price':price, 'volume':volume})
+        book['bids'].append({'price':price, 'volume':round(volume,5)})
 
     spread = round(book['asks'][0]['price'] - book['bids'][0]['price'], 2)
 

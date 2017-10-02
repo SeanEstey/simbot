@@ -2,8 +2,8 @@
 
 #### Clone repository
 ```
-git clone https://github.com/SeanEstey/flask_celery_skeleton --branch <b_name>
-cd flask_celery_skeleton
+git clone https://github.com/SeanEstey/simbot
+cd simbot
 ```
 
 #### Ubuntu/Python Packages
@@ -33,13 +33,17 @@ Start RabbitMQ daemon:
 
 Run app:
 
-`python run.py`
+`python3 run.py <args>`
 
 Arguments
 
--Start with celerybeat:
+-Start w/ celery worker:
 
-`-c, --celerybeat` 
+`-c, --celery`
+
+-Start with celerybeat scheduler:
+
+`-b, --beat` 
 
 -Start in debug mode:
 

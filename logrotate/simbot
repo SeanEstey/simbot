@@ -1,5 +1,5 @@
-# Test out by running logrotate --force /etc/logrotate.d/bravo
-#
+# Copy to /etc/logrotate.d/
+# Test out by running logrotate --force /etc/logrotate.d/simbot
 # 'copytruncate' used because python logger handler will still be pointing
 # to the old renamed file if it is simply renamed
 #
@@ -9,7 +9,7 @@
 # to:
 #55 23	* * *	root  test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.daily )
 
-/root/bravo/logs/*.log {
+/root/simbot/logs/*.log {
 	daily
 	rotate 10
 	su root root
