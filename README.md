@@ -1,3 +1,5 @@
+## Overview
+
 Bitcoin/Ethereum trading bot supporting real-time simulation and live trading with full client UI. Trading logic follows ping-pong method and arbitrage trades between exchanges. Earning statistics are tracked for each price/volume holding. Settings can be adjusted in config.py.
 
 Live trading exchange API's supported: QuadrigaCX (BTC/CAD, ETH/CAD)
