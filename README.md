@@ -25,7 +25,7 @@ Monitored exchanges: Coinsquare [BTC/CAD]
 git clone https://github.com/SeanEstey/simbot
 cd simbot
 ```
-2. Install dependencies from pkg_list.txt and requirements.txt in simbot/requirements/
+2. Install dependencies from `pkg_list.txt` and `requirements.txt` in [simbot/requirements](https://github.com/SeanEstey/simbot/tree/master/requirements)
 3. Run setup.py
 4. Create MongoDB credentials file /simbot/db_auth.py:
 ```
@@ -38,10 +38,10 @@ password=password
 1. Start RabbitMQ daemon:
 `$ rabbitmqctl start_app`
 2. Run:
-`python3 run.py <args>`
-`-c, --celery`# Start w/ celery worker
-`-b, --beat`  # Start w/ celerybeat scheduler
-`-d, --debug` # Debug mode
+```
+python3 run.py <args>
+```
+Arglist: `-c, --celery` to start celery worker daemon, `-b, --beat` to start celerybeat schedule, and `-d, --debug` to run in Debug mode
 
 ## Shutting Down
 
