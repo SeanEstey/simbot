@@ -10,7 +10,9 @@ Simulated trading from real-time order book data.
 
 ### Live Mode
 
-Real trades will be made on exchanges w/ supported API's. SMS alerts are sent when large arbitrage trades are available across exchanges w/o supported API's for manual trading.
+Supported exchanges: QuadrigaCX (BTC/CAD and ETH/CAD)
+
+SMS alerts are sent for arbitrage on Coinsquare (no API currently) if there is an ask order price greater than the bid price on QuadrigaCX.
 
 ## Setup
 
