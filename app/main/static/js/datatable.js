@@ -127,10 +127,6 @@ function applyCustomization(_id) {
     $('.dataTables_length').append($('#filters'));
 
     $tbl_row.prop('id','tbl-row');
-    $tbl_row.addClass('collapse');
-
-    $('.filters-row').append($('#dt-min-max'));
-    $('#dt-min-max').prop('hidden',false);
     $('#filters').prop('hidden',false);
 
     $pages_row.addClass('pages-row');

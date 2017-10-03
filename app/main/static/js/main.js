@@ -14,31 +14,30 @@ function initMain() {
     showExchTickers();
     showHoldingsTable();
     showMarkets();
+
+    $('#side_frm').height($(window).height());
 }
 
 //------------------------------------------------------------------------------
 function initEventHandlers() {
     
     // Minimize/maximize pane styling
-    $('#tbl-row').on('shown.bs.collapse', function() {
-        console.log('tbl-row expanded');
-        $('#dt-min-max i').removeClass('fa-window-maximize').addClass('fa-window-minimize');
+    $('#hld-bdy').on('shown.bs.collapse', function() {
+        console.log('holdings expanded');
+        $('#holdings .min-max i').removeClass('fa-window-maximize').addClass('fa-window-minimize');
     });
-    $('#tbl-row').on('hidden.bs.collapse', function() {
-        console.log('tbl-row collapsed');
-        $('#dt-min-max i').addClass('fa-window-maximize').removeClass('fa-window-minimize');
+    $('#hld-bdy').on('hidden.bs.collapse', function() {
+        console.log('holdings collapsed');
+        $('#holdings .min-max i').addClass('fa-window-maximize').removeClass('fa-window-minimize');
     });
-
-    $('#chart-panel').on('shown.bs.collapse', function() {
-        console.log('#chart-panel expanded');
-        $('#chart-min-max i').removeClass('fa-window-maximize').addClass('fa-window-minimize');
-        resizeCanvas(); 
+    $('#mkt-bdy').on('shown.bs.collapse', function() {
+        console.log('#markets body expanded');
+        $('#markets .min-max i').removeClass('fa-window-maximize').addClass('fa-window-minimize');
     });
-    $('#chart-panel').on('hidden.bs.collapse', function() {
-        console.log('#chart-panel collapsed');
-        $('#chart-min-max i').addClass('fa-window-maximize').removeClass('fa-window-minimize');
+    $('#mkt-bdy').on('hidden.bs.collapse', function() {
+        console.log('#markets body collapsed');
+        $('#markets .min-max i').addClass('fa-window-maximize').removeClass('fa-window-minimize');
     });
-
 	$('#chart-asset').change(function() {
 		console.log('chart-asset select option changed');
 	});
@@ -53,6 +52,7 @@ function showMarkets() {
         data={'exchange':'QuadrigaCX', 'asset':'btc'},
         function(response) {
             drawAreaChart(JSON.parse(response));
+    resizeCanvas();
     });
 }
 
@@ -164,9 +164,9 @@ function showHoldingsTable() {
                 }),
                 formatData()
             );
-
             applyCustomization(TBL_ID);
             calcSimDuration();
+            resizeCanvas();
         });
 }
 

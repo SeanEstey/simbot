@@ -27,9 +27,9 @@ td select.form-control {
 .l-pane {
     height:100%;
     max-width:575px;
-    background-color:#215e64;
+    background-color:#136d8d /*#215e64;*/
 }
-.holdings-container {
+.slide-panel {
     border:1px solid rgba(0, 0, 0, 0.14);
     border-radius:5px;
 }

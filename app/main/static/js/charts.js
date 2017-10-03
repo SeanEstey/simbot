@@ -51,9 +51,6 @@ function initChart(elem_id, loader_id) {
 
 //------------------------------------------------------------------------------
 function showLoader() {
-    //$('#chart-panel').collapse('show');
-    //$chart.find('svg').remove();
-    //$chart.find('.morris-hover').remove();
     $placehld.getLayer('loader').visible = true;
     $placehld.show();
     loopLoaderAnim();
@@ -63,7 +60,6 @@ function showLoader() {
 function hideLoader() {
     $placehld.getLayer('loader').visible = false;
     $placehld.hide();
-    //$chart.find('svg').show();
 }
 
 //------------------------------------------------------------------------------
@@ -157,8 +153,8 @@ function loopLoaderAnim(){
 
 //-----------------------------------------------------------------------------
 function resizeCanvas() {
-    if($chart.height() > 450*.75)
-        $chart.height(450*.75);
+    if($chart.height() > 500)
+        $chart.height(500);
 
     last_chart_width = $chart.width();
 
@@ -179,8 +175,11 @@ function resizeCanvas() {
             continue;
     }
     $placehld.drawLayers();
+    $('svg').height(450);
     $('svg').width($chart.width());
 
     console.log('resizeCanvas. chart w='+$chart.width()+', h='+$chart.height());
     areaChart.redraw();
+
+    $('#side_frm').height($('#main_frm').height());
 }
