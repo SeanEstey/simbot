@@ -2,6 +2,32 @@
    String-related utility functions.
 */
 
+//------------------------------------------------------------------------------
+function api_call(path, data, on_done) {
+    $.ajax(
+        { type:'POST', data:data, url:BASE_URL + path }
+    )
+    .done(function(response){
+        on_done(response);
+    })
+    .fail(function(response){
+        on_done(response)
+    });
+}
+
+//------------------------------------------------------------------------------
+function objectIdToDate(oid) {
+    /* MongoDB ObjectId->Date */
+    return new Date(parseInt(oid.substring(0,8),16)*1000);
+}
+
+//------------------------------------------------------------------------------
+function objectIdToTime(oid) {
+    /* MongoDB ObjectId->Timestamp (ms) */
+    return parseInt(oid.substring(0,8),16)*1000;
+}
+
+//------------------------------------------------------------------------------
 function getElapsedTime(t1) {
     var d = new Date();
     return new Date().getTime() - t1.getTime();

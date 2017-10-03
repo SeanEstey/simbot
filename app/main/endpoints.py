@@ -1,4 +1,5 @@
 # app.main.endpoints
+from datetime import datetime, timedelta
 from bson.json_util import dumps
 import logging, pprint
 from flask import g, request
@@ -30,7 +31,16 @@ def get_orders():
 
 @main.route('/trades/get', methods=['POST'])
 def get_trades():
-    trades = list(g.db['trades'].find()).limit(100).sort('date',-1)
+    ex = request.form.get('exchange')
+    asset = request.form.get('asset')
+    _1day = datetime.utcnow() - timedelta(days=1)
+    trades = list(
+        g.db['trades'].find({
+            'exchange':ex,
+            'currency':asset,
+            'date':{'$gte':_1day}
+        }).sort('date',1)
+    )
     return dumps(trades)
 
 @main.route('/books/update', methods=['POST'])

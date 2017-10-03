@@ -4,16 +4,22 @@
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.16/css/dataTables.bootstrap4.min.css"/>
   <link rel="stylesheet" type="text/css" href="{{url_for("static", filename="main/css/simbot.css")}}"/>
   <link rel="stylesheet" type="text/css" href="{{url_for("static", filename="main/css/lib/json-viewer.css")}}"/>
+
   <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/sugar.min.js")}}"></script>
-  <script type="text/javascript" src="{{url_for("static", filename="main/js/main.js")}}?v=0.11"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.0/raphael-min.js"></script>
   <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/json-viewer.js")}}"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/jcanvas/20.1.2/jcanvas.js"></script>
+  <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/morris.min.js")}}"></script>
+  <script type="text/javascript" src="{{url_for("static", filename="main/js/charts.js")}}"></script>
+  <script type="text/javascript" src="{{url_for("static", filename="main/js/datatable.js")}}"></script>
+  <script type="text/javascript" src="{{url_for("static", filename="main/js/main.js")}}"></script>
 {% endblock %}
 
 {% block postlibs %}
-  <script src="//www.quadrigacx.com/assets20170925/js/socket.io.js"></script>
+
   <script type="text/javascript" src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
   <script type="text/javascript" src="https://cdn.datatables.net/1.10.16/js/dataTables.bootstrap4.min.js"></script>
-  <script>$(function() {init()})</script>
+  <script> jQuery(function($){initMain()}) </script>
 {% endblock %}
 
 {% block content %}
@@ -85,7 +91,7 @@
     <div class="col-9 p-5" style="height:100%">
       <h3 class="mb-3">Holdings</h3>
       <!--Holdings datatable component-->
-      <div class="holdings-container" hidden>
+      <div class="holdings-container">
         <div id="filters">
           <label class="fa fa-filter mr-4" style="font-size:1.25rem;">
           </label>
@@ -97,7 +103,8 @@
             </select>
           </label>
           <label id="fltr-exch" class="mr-4"> 
-            <select name="dt-holdings_ex" aria-controls="dt-holdings" class="form-control form-control-sm" style="width:100%!important">
+            <select name="dt-holdings_ex" aria-controls="dt-holdings" class="form-control form-control-sm"
+            style="width:100%!important">
               <option value="btc">QuadrigaCX</option>
               <option value="eth">Coinsquare</option>
               <option value="-1">All</option>
@@ -111,12 +118,50 @@
             </select>
           </label>
         </div>
-        <div data-toggle="collapse" data-target="#tbl-row" id="min-max" class="pull-right" hidden>
+        <div id="dt-min-max" data-toggle="collapse" data-target="#tbl-row" class="pull-right" aria-expanded="false" hidden>
           <i class="fa fa-window-maximize text-right"></i>
         </div>
         <!--Datatable (jQuery plug-in)-->
         <table id="dt-holdings" class="table table-responsive table-striped dataTable" hidden></table>
       </div>
+
+      <h3 class="mb-3 mt-5">Markets</h3>
+
+      <!--Markets Panel-->
+      <div class="min-max-panel">
+        <div class="analy-hdr text-left py-2 px-3">
+          <label class="mr-4">
+            <select id="chart-asset" name="chart-asset" aria-controls="chart" class="form-control form-control-sm">
+              <option value="btc">BTC</option>
+              <option value="eth">ETH</option>
+              <option value="-1">All</option>
+            </select>
+          </label>
+          <label class="mr-4">
+            <select name="chart-timespan" aria-controls="chart" class="form-control form-control-sm">
+              <option value="btc">1 Day</option>
+              <option value="eth">1 Week</option>
+              <option value="-1">1 Month</option>
+              <option value="-1">3 Months</option>
+              <option value="-1">6 Months</option>
+              <option value="-1">YTD</option>
+              <option value="-1">1 Year</option>
+              <option value="-1">All</option>
+            </select>
+          </label>
+          <span id="chart-min-max" class="pull-right" data-toggle="collapse" data-target="#chart-panel" aria-expanded="false"
+          style="color:#74480a">
+            <i class="fa fa-window-minimize text-right"></i>
+          </span>
+        </div>
+        <div id="chart-panel" style="height:500px!important" class="collapse">
+          <div class="chart p-0" style="width:100%; height:100%;" id="chart">
+            <canvas id="placehld" style="width:1198px; height:100%"></canvas>
+            <!--Morris.js Chart-->
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 {% endblock %}
@@ -184,6 +229,16 @@
       </a>
     </li>
   </ul>
+
+  <!--Date Range select-->
+  <label class="d-flex justify-content-center flex-wrap p-3" hidden>
+    <div class="input-daterange input-group">
+      <input id="start-date" name="start" type="text" class="form-control" placeholder="mm/dd/yyyy">
+      <div id="start-btn" class="input-group-addon fa fa-calendar"></div>
+      <input id="end-date" name="end" type="text" class="form-control" placeholder="mm/dd/yyyy">
+      <div id="end-btn" class="input-group-addon fa fa-calendar"></div>
+    </div>
+  </label>
 {% endblock %}
 
 
