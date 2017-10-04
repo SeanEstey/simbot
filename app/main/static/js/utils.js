@@ -1,6 +1,30 @@
-/* utils.js 
-   String-related utility functions.
-*/
+/* utils.js */
+min_icon = 'fa-window-minimize';
+max_icon = 'fa-window-maximize';
+
+//---------------------------------------------------------------------
+function format(str) {
+  /* str: "Hello %s, my name is %s" 
+     args: one for each %s 
+  */ 
+
+  var args = [].slice.call(arguments, 1), i = 0;
+  return str.replace(/%s/g, function() {return args[i++];});
+}
+
+//------------------------------------------------------------------------------
+function initSlidePanel(id_) {
+    var $panel = $('#'+id_);
+    var $body = $('#'+id_+' .collapse');
+
+    // Event handlers for min-max icons on expand/collapse
+    $body.on('shown.bs.collapse', function() {
+        $panel.find('.min-max i').removeClass(max_icon).addClass(min_icon);
+    });
+    $body.on('hidden.bs.collapse', function() {
+        $panel.find('.min-max i').removeClass(min_icon).addClass(max_icon);
+    });
+}
 
 //------------------------------------------------------------------------------
 function api_call(path, data, on_done) {
@@ -33,15 +57,7 @@ function getElapsedTime(t1) {
     return new Date().getTime() - t1.getTime();
 }
 
-//---------------------------------------------------------------------
-function format(str) {
-  /* str: "Hello %s, my name is %s" 
-     args: one for each %s 
-  */ 
 
-  var args = [].slice.call(arguments, 1), i = 0;
-  return str.replace(/%s/g, function() {return args[i++];});
-}
 
 //------------------------------------------------------------------------------
 String.prototype.toTitleCase = function(n) {

@@ -33,12 +33,12 @@ def get_orders():
 def get_trades():
     ex = request.form.get('exchange')
     asset = request.form.get('asset')
-    _1day = datetime.utcnow() - timedelta(days=1)
+    start = datetime.fromtimestamp(int(request.form.get('since')))
     trades = list(
         g.db['trades'].find({
             'exchange':ex,
             'currency':asset,
-            'date':{'$gte':_1day}
+            'date':{'$gte':start}
         }).sort('date',1)
     )
     return dumps(trades)
@@ -51,21 +51,4 @@ def _update_books():
         coinsquare.update_books()
     elif exchange == 'QuadrigaCX':
         quadcx.update_books()
-
     return 'OK'
-
-@main.route('/test/quadcxapi', methods=['GET'])
-def _test_quadcx_api():
-    """gary_api = g.db['bots'].find_one({'name':'Gary'})['api'][0]
-    from app.quadriga import QuadrigaClient
-    client = QuadrigaClient(
-        api_key=gary_api['key'],
-        api_secret=gary_api['secret'],
-        client_id=64288,
-        default_book='btc_cad'
-     )
-    #log.debug(client.get_summary())
-    #log.debug(client.get_public_orders())
-    #log.debug(client.get_trades(limit=5))
-    """
-    pass

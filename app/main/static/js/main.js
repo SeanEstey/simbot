@@ -1,59 +1,56 @@
 /* main.js  */
+
 num_format = Sugar.Number.format;
 abbr = Sugar.Number.abbr;
 BASE_URL = "http://45.79.176.125";
 TBL_ID = 'dt-holdings';
 gHoldings = null; // Raw holdings data returned from server
 gDatatable = null; // Datatable instance
+$mktPanl = $('#markets');
+$hldPanl = $('#holdings');
 
 //------------------------------------------------------------------------------
 function initMain() {
+    initSlidePanel('holdings');
+    initSlidePanel('markets');
+    initChart('chart-contr','spinner');
     initEventHandlers();
-    initChart('chart', 'placehld');
     showBotSummary();
     showExchTickers();
     showHoldingsTable();
-    showMarkets();
-
-    $('#side_frm').height($(window).height());
+    renderMarketChart();
 }
 
 //------------------------------------------------------------------------------
 function initEventHandlers() {
-    
-    // Minimize/maximize pane styling
-    $('#hld-bdy').on('shown.bs.collapse', function() {
-        console.log('holdings expanded');
-        $('#holdings .min-max i').removeClass('fa-window-maximize').addClass('fa-window-minimize');
-    });
-    $('#hld-bdy').on('hidden.bs.collapse', function() {
-        console.log('holdings collapsed');
-        $('#holdings .min-max i').addClass('fa-window-maximize').removeClass('fa-window-minimize');
-    });
-    $('#mkt-bdy').on('shown.bs.collapse', function() {
-        console.log('#markets body expanded');
-        $('#markets .min-max i').removeClass('fa-window-maximize').addClass('fa-window-minimize');
-    });
-    $('#mkt-bdy').on('hidden.bs.collapse', function() {
-        console.log('#markets body collapsed');
-        $('#markets .min-max i').addClass('fa-window-maximize').removeClass('fa-window-minimize');
-    });
-	$('#chart-asset').change(function() {
-		console.log('chart-asset select option changed');
+    $('#markets select').change(function(){
+        renderMarketChart();
 	});
+
+    $(window).resize(function(){
+        // Adjust side frame height to 100%
+        $('#side_frm').height($(window).height() - $(".banner").height());
+        resizeChart();
+    })
+    $(window).resize();
 }
 
 //------------------------------------------------------------------------------
-function showMarkets() {
-    showLoader();
-    
-    api_call(
-        '/trades/get',
-        data={'exchange':'QuadrigaCX', 'asset':'btc'},
-        function(response) {
-            drawAreaChart(JSON.parse(response));
-    resizeCanvas();
-    });
+function renderMarketChart() {
+    showSpinner(true);
+    var span_name = $('#markets select[name="timespan"]').val();
+
+    api_call('/trades/get',
+        data={
+            exchange: $('#markets select[name="exchange"]').val(),
+            asset: $('#markets select[name="asset"]').val(),
+            since: getTimespan(span_name, units='sec')['since'],
+            until: getTimespan(span_name, units='sec')['until']
+        },
+        function(resp) {
+            drawChart(JSON.parse(resp), span_name, timespans[span_name]);
+        }
+    );
 }
 
 //------------------------------------------------------------------------------
@@ -166,7 +163,7 @@ function showHoldingsTable() {
             );
             applyCustomization(TBL_ID);
             calcSimDuration();
-            resizeCanvas();
+            ///resizeCanvas();
         });
 }
 

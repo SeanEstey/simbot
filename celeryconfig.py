@@ -12,5 +12,9 @@ beat_schedule = {
     'update': {
         'task':'app.main.tasks.update',
         'schedule': crontab(minute='*/1')
+    },
+    'api_update': {
+        'task':'app.main.tasks.api_update',
+        'schedule': crontab(minute='*/1')
     }
 }

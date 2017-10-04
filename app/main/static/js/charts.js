@@ -1,185 +1,127 @@
 /* charts.js */
 
-morris = null; // morris.js app
-areaChart = null; // area chart instance
-chart_id = null;
-last_chart_width = null;
-$chart = null; 
-placehld_id = null;
-$placehld = null; // jCanvas chart loader
-t1 = new Date();
-angle = 360;
+SPIN_DURATION = 3000;
+SPIN_ROT_DIST = 360;
+MAX_CHART_HT = 500;
+
+prev_wdt = null;
+// Rendered morris chart instance
+areaChart = null; 
+// Div container for morris chart elements
+$chartContr = null; 
+g_chart_contr_id = null;
+g_spin_id = null;
+// jCanvas animated chart spinner
+$spin = null; 
 
 //-----------------------------------------------------------------------------
-function initChart(elem_id, loader_id) {
-    /* @elem_id: chart parent div id
-    @loader_id: child canvas selector id
-    */
-    chart_id = elem_id;
-    $chart = $('#'+chart_id);
-    last_chart_width = $chart.width();
-    console.log($chart.width());
+function initChart(contr_id, spin_id) {
+    /*@contr_id: ID of chart container <div>
+     * @spin_id: ID of spinner <canvas>
+     */
+    g_chart_contr_id = contr_id;
+    g_spin_id = spin_id;
+    $chartContr = $('#'+contr_id);
+    prev_wdt = $chartContr.width();
 
-    // Make canvas coord dimensions match DOM dimensions
-    placehld_id = loader_id;
-    // Html canvas
-    var placehld_cv = document.getElementById(loader_id);
-    placehld_cv.width = $chart.width();
-    placehld_cv.height = $chart.height();
-    // jCanvas
-    $placehld = $('#'+placehld_id);
-    $placehld.width(placehld_cv.width);
-    $placehld.height(placehld_cv.height);
-    $placehld.drawPolygon({
-      layer:true,
-      name:'loader',
-      fillStyle:'rgba(39, 155, 190, 0.5)',
-      x:placehld_cv.width/2,
-      y:placehld_cv.height/2,
-      radius: 50,
-      sides: 5,
-      concavity: 0.5
-    });
-    $placehld.getLayer('loader').visible = true;
+    // DOM spinner canvas element (DOM coord system)
+    var cv = document.getElementById(spin_id);
+    cv.width = $chartContr.width();
+    cv.height = $chartContr.height();
 
-    // Event handlers
-    $(window).resize(function(e) {
-        if($chart.width() != last_chart_width)
-            resizeCanvas();
-    });
+    // jCanvas spinner object (internal coord system)
+    $spin = $('#'+spin_id);
+    $spin.width(cv.width);
+    $spin.height(cv.height);
+    showSpinner(true);
 }
 
 //------------------------------------------------------------------------------
-function showLoader() {
-    $placehld.getLayer('loader').visible = true;
-    $placehld.show();
-    loopLoaderAnim();
-}
-
-//------------------------------------------------------------------------------
-function hideLoader() {
-    $placehld.getLayer('loader').visible = false;
-    $placehld.hide();
-}
-
-//------------------------------------------------------------------------------
-function avgPrice(data, start, end) {
-    /* Price average within time period */
-    var in_period = data.filter(function(elem, j, data) {
-        var d = elem['date']['$date'];
-
-        if(d >= start && d < end)
-            return elem['price'];
-    });
-
-    var p = in_period.map(function(x){ return x.price });
-
-    if(p.length == 0)
-        return -1;
-
-    var avg = p.reduce(function(a,b){ return a+b }) / p.length;
-    return Number(avg.toFixed(0));
-}
-
-//------------------------------------------------------------------------------
-function lastPrice(series, idx) {
-    for(var i=idx; i>=0; i--) {
-        if(series[i]['price'] > 0)
-            return series[i]['price'];
-    }
-    return -1;
-}
-
-//------------------------------------------------------------------------------
-function drawAreaChart(data) {
-    hideLoader();
-
-    // Divide x-axis into 10 min segments, averaging price for each.
-    var series = [];
-    var t_first = new Date(new Date().getTime() - (1000*3600*24)).getTime();
-    var p_duration = 1000*60*10;
-    var n_periods = 24*6;
-
-    for(var i=0; i<n_periods; i++) {
-        var t_start = t_first + (i*p_duration);
-        var avg = avgPrice(data, t_start, t_start+p_duration);
-        series.push({ price:avg, time:t_start });
-    }
-
-    for(var i=0; i<series.length; i++) {
-        if(series[i]['price'] == -1)
-            series[i]['price'] = lastPrice(series,i);
-    }
-
-    var prices = data.map(function(x){ return x.price});
-    var min = Number(Math.min.apply(null,prices).toFixed(0));
-    var max = Number(Math.max.apply(null,prices).toFixed(0));
-    var spread = max - min;
-
+function drawChart(data, name, timespan) {
+    var series = periodize(data, name, timespan);
+    var range = data_range(series);
+    var ymin = range['min']; //Number((range['min']-range['spread']/10).toFixed(0));
+    showSpinner(false);
     areaChart = Morris.Area({
-      element: 'chart',
-      data: series,
-      xkey: 'time',
-      ykeys: ['price'],
-      ymax: max,
-      ymin: min - spread/10,
-      pointSize: 0,
-      smooth: false,
-      labels: ['BTC/CAD'],
-      resize:true
+        element:g_chart_contr_id,
+        data:series,
+        xkey:'time', ykeys:['price'],
+        labels: ['BTC/CAD'],
+        ymin:ymin, ymax:range['max'],
+        pointSize:0, smooth:false, resize:true
     });
 }
 
-//------------------------------------------------------------------------------
-function displayError(msg, response) {
-    $('#main').prop('hidden', true);
-    $('#error').prop('hidden', false);
-    $('#err_alert').prop('hidden', false);
-    alertMsg(msg, 'danger', id="err_alert");
-}
-
 //-----------------------------------------------------------------------------
-function loopLoaderAnim(){
-    var loopDuration = 3000;
-    angle = angle *-1;
-    var p = $placehld.getLayer('loader');
-    $placehld.animateLayer(
-        'loader',
-        {rotate:angle},
-        loopDuration,
-        loopLoaderAnim
-    );
-}
-
-//-----------------------------------------------------------------------------
-function resizeCanvas() {
-    if($chart.height() > 500)
-        $chart.height(500);
-
-    last_chart_width = $chart.width();
+function resizeChart() {
+    /* Resize/redraw chart if window/panel has been resized
+    */
+    if(!areaChart || !$chartContr || $chartContr.width()==prev_wdt)
+        return;
+    if($chartContr.height() > MAX_CHART_HT)
+        $chartContr.height(MAX_CHART_HT);
+    prev_wdt = $chartContr.width();
 
     // Resize canvas coordinate dimensions
-    var placehld_cv = document.getElementById(placehld_id);
-    placehld_cv.width = last_chart_width;
+    var cv = document.getElementById(g_spin_id);
+    cv.width = prev_wdt
 
-    // Resize DOM canvas dimensions
-    $placehld.width(placehld_cv.width);
-    $placehld.height(placehld_cv.height);
-
-    // Adjust layer positions
-    var layers = $placehld.getLayers();
+    // Resize jCanvas DOM dimensions
+    $spin.width(cv.width);
+    $spin.height(cv.height);
+    // Adjust jCanvas layer positions
+    var layers = $spin.getLayers();
     for(var i=0; i<layers.length; i++) {
         var layer = layers[i];
-        layer.x = placehld_cv.width/2 - layer.width/2;
+        layer.x = cv.width/2 - layer.width/2;
         if(layer.name == 'title')
             continue;
     }
-    $placehld.drawLayers();
-    $('svg').height(450);
-    $('svg').width($chart.width());
+    $spin.drawLayers();
 
-    console.log('resizeCanvas. chart w='+$chart.width()+', h='+$chart.height());
+    $('svg').height(MAX_CHART_HT - 50);
+    $('svg').width($chartContr.width());
     areaChart.redraw();
-
     $('#side_frm').height($('#main_frm').height());
+   
+    console.log('resizing chart, w='+$chartContr.width()+', h='+$chartContr.height());
+}
+
+//------------------------------------------------------------------------------
+function showSpinner(show) {
+    /* Rotating star spinner displayed while charts are loading.
+    */
+    if(!$spin)
+        return;
+    if(!$spin.getLayer('loader')) {
+        var cv = document.getElementById(g_spin_id);
+        // Initial drawing.
+        $spin.drawPolygon({
+            layer:true, name:'loader', fillStyle:'rgba(39, 155, 190, 0.5)',
+            x:cv.width/2, y:cv.height/2, radius:50, sides:5, concavity:0.5
+        });
+    }
+    if(show) {
+        $chartContr.find('svg').remove();
+        $chartContr.find('.morris-hover').remove();
+
+        $spin.getLayer('loader').visible = true;
+        $spin.show();
+        rotateSpinner();
+    }
+    else {
+        $spin.getLayer('loader').visible = false;
+        $spin.hide();
+    }
+}
+
+//------------------------------------------------------------------------------
+function rotateSpinner() {
+    SPIN_ROT_DIST *= -1;
+    $spin.animateLayer(
+        'loader',
+        { rotate:SPIN_ROT_DIST },
+        SPIN_DURATION,
+        rotateSpinner
+    );
 }
