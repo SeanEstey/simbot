@@ -4,6 +4,7 @@
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.16/css/dataTables.bootstrap4.min.css"/>
   <link rel="stylesheet" type="text/css" href="{{url_for("static", filename="main/css/simbot.css")}}"/>
   <link rel="stylesheet" type="text/css" href="{{url_for("static", filename="main/css/lib/json-viewer.css")}}"/>
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/morris.js/0.5.1/morris.css">
   <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/sugar.min.js")}}"></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.0/raphael-min.js"></script>
   <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/json-viewer.js")}}"></script>
@@ -133,33 +134,41 @@
 
       <!--Markets Panel-->
       <div id="markets" class="slide-panel">
-        <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+        <div class="panel-hdr d-flex justify-content-between py-2 px-3"
+        style="border-bottom: 1px solid rgba(0,0,0,0.15); background-color:rgba(211, 211, 211,0.10);">
           <span>
-            <h3>Markets</h3>
+            <h3 class="mb-0">Markets</h3>
           </span>
           <span class="min-max pull-right" data-toggle="collapse" data-target="#mkt-bdy" style="color:#74480a">
             <i class="fa fa-window-minimize text-right"></i>
           </span>
         </div>
         <div id="mkt-bdy" class="panel-bdy collapse show">
-          <div class="analy-hdr text-left py-2 px-3">
+          <div class="analy-hdr text-left pt-3 px-3">
             <label class="mr-4">
-              <select name="exchange" aria-controls="chart" class="form-control form-control-sm">
+              <select name="exch_a" aria-controls="chart" class="form-control form-control-sm">
+                <option value="">None</option>
                 <option value="QuadrigaCX">QuadrigaCX</option>
                 <option value="Coinsquare">Coinsquare</option>
                 <option value="Kraken">Kraken</option>
-                <option value="-1">All</option>
+              </select>
+            </label>
+            <label class="mr-4">
+              <select name="exch_b" aria-controls="chart" class="form-control form-control-sm">
+                <option value="">None</option>
+                <option value="Coinsquare">Coinsquare</option>
+                <option value="QuadrigaCX">QuadrigaCX</option>
+                <option value="Kraken">Kraken</option>
               </select>
             </label>
             <label class="mr-4">
               <select name="asset" aria-controls="chart" class="form-control form-control-sm">
                 <option value="btc">BTC</option>
                 <option value="eth">ETH</option>
-                <option value="-1">All</option>
               </select>
             </label>
             <label class="mr-4">
-              <select name="timespan" aria-controls="chart" class="form-control form-control-sm">
+              <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
                 <option value="1d">1 Day</option>
                 <option value="7d">1 Week</option>
                 <option value="1m">1 Month</option>
@@ -171,7 +180,7 @@
               </select>
             </label>
           </div>
-          <div class="chart p-0" style="width:100%; height:100%;" id="chart-contr"> 
+          <div class="chart text-center p-0" style="width:100%; height:100%;" id="chart-contr"> 
             <canvas id="spinner" style="width:1198px; height:100%"></canvas>
             <!--Morris.js Chart-->
           </div>

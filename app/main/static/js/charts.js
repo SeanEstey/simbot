@@ -2,7 +2,7 @@
 
 SPIN_DURATION = 3000;
 SPIN_ROT_DIST = 360;
-MAX_CHART_HT = 500;
+MAX_CHART_HT = 400;
 
 prev_wdt = null;
 // Rendered morris chart instance
@@ -33,22 +33,31 @@ function initChart(contr_id, spin_id) {
     $spin = $('#'+spin_id);
     $spin.width(cv.width);
     $spin.height(cv.height);
-    showSpinner(true);
 }
 
 //------------------------------------------------------------------------------
-function drawChart(data, name, timespan) {
-    var series = periodize(data, name, timespan);
-    var range = data_range(series);
-    var ymin = range['min']; //Number((range['min']-range['spread']/10).toFixed(0));
+function drawChart(data, xkey, ykeys, labels) {
     showSpinner(false);
+
     areaChart = Morris.Area({
         element:g_chart_contr_id,
-        data:series,
-        xkey:'time', ykeys:['price'],
-        labels: ['BTC/CAD'],
-        ymin:ymin, ymax:range['max'],
-        pointSize:0, smooth:false, resize:true
+        data:data,
+        xkey:'time',
+        ykeys:ykeys,
+        labels:labels,
+        ymin:'auto',
+        ymax:'auto',
+        smooth:false,
+        lineColors:['#5cb85c','#136d8d'],
+        pointSize:0,
+        pointStrokeColors:['black'],
+        pointFillColors:['white'],
+        fillOpacity: 0.6,
+        dateFormat: function(x) { return new Date(x).toLocaleString()},
+        hideHover:'auto',
+        preUnits:'$',
+        behaveLikeLine:true,
+        resize:true
     });
 }
 
@@ -74,17 +83,14 @@ function resizeChart() {
     for(var i=0; i<layers.length; i++) {
         var layer = layers[i];
         layer.x = cv.width/2 - layer.width/2;
-        if(layer.name == 'title')
-            continue;
     }
     $spin.drawLayers();
 
     $('svg').height(MAX_CHART_HT - 50);
     $('svg').width($chartContr.width());
-    areaChart.redraw();
     $('#side_frm').height($('#main_frm').height());
-   
-    console.log('resizing chart, w='+$chartContr.width()+', h='+$chartContr.height());
+
+    //console.log('resizing chart, w='+$chartContr.width()+', h='+$chartContr.height());
 }
 
 //------------------------------------------------------------------------------
@@ -93,6 +99,7 @@ function showSpinner(show) {
     */
     if(!$spin)
         return;
+
     if(!$spin.getLayer('loader')) {
         var cv = document.getElementById(g_spin_id);
         // Initial drawing.
@@ -100,16 +107,19 @@ function showSpinner(show) {
             layer:true, name:'loader', fillStyle:'rgba(39, 155, 190, 0.5)',
             x:cv.width/2, y:cv.height/2, radius:50, sides:5, concavity:0.5
         });
+        $spin.drawLayers();
     }
+
     if(show) {
+        $('#markets .analy-hdr').hide();
         $chartContr.find('svg').remove();
         $chartContr.find('.morris-hover').remove();
-
         $spin.getLayer('loader').visible = true;
         $spin.show();
         rotateSpinner();
     }
     else {
+        $('#markets .analy-hdr').show();
         $spin.getLayer('loader').visible = false;
         $spin.hide();
     }

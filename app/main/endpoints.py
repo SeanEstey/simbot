@@ -31,12 +31,12 @@ def get_orders():
 
 @main.route('/trades/get', methods=['POST'])
 def get_trades():
-    ex = request.form.get('exchange')
+    exchange = request.form.get('exchange')
     asset = request.form.get('asset')
     start = datetime.fromtimestamp(int(request.form.get('since')))
     trades = list(
         g.db['trades'].find({
-            'exchange':ex,
+            'exchange':exchange,
             'currency':asset,
             'date':{'$gte':start}
         }).sort('date',1)

@@ -18,15 +18,15 @@ function initMain() {
     showBotSummary();
     showExchTickers();
     showHoldingsTable();
-    renderMarketChart();
 }
 
 //------------------------------------------------------------------------------
 function initEventHandlers() {
     $('#markets select').change(function(){
+        showSpinner(true);
+        onSeriesChange($(this));
         renderMarketChart();
 	});
-
     $(window).resize(function(){
         // Adjust side frame height to 100%
         $('#side_frm').height($(window).height() - $(".banner").height());
@@ -37,26 +37,13 @@ function initEventHandlers() {
 
 //------------------------------------------------------------------------------
 function renderMarketChart() {
-    showSpinner(true);
-    var span_name = $('#markets select[name="timespan"]').val();
-
-    api_call('/trades/get',
-        data={
-            exchange: $('#markets select[name="exchange"]').val(),
-            asset: $('#markets select[name="asset"]').val(),
-            since: getTimespan(span_name, units='sec')['since'],
-            until: getTimespan(span_name, units='sec')['until']
-        },
-        function(resp) {
-            drawChart(JSON.parse(resp), span_name, timespans[span_name]);
-        }
-    );
+    var labels = ykeys = series.map(function(x){return x.label});
+    drawChart(buildDataPoints(), 'time', ykeys, labels);
 }
 
 //------------------------------------------------------------------------------
 function showBotSummary() {
-    api_call(
-        '/stats/get',
+    api_call('/stats/get',
         null,
         function(response){
             var stats = JSON.parse(response);
@@ -73,8 +60,7 @@ function showBotSummary() {
 
 //------------------------------------------------------------------------------
 function showExchTickers() {
-    api_call(
-        '/tickers/get',
+    api_call('/tickers/get',
         null,
         function(response){
             var tickers = JSON.parse(response);
@@ -145,8 +131,7 @@ function showExchTickers() {
 
 //------------------------------------------------------------------------------
 function showHoldingsTable() {
-    api_call(
-        '/holdings/get',
+    api_call('/holdings/get',
         data=null,
         function(response){
             gHoldings = JSON.parse(response);

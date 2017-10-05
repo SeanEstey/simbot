@@ -28,7 +28,7 @@ def update_order_book(book_name, base, trade):
         log.exception('Coinsquare orderbook request failed: %s', str(e))
         return False
     else:
-        pprint(data)
+        #pprint(data)
         _book = json.loads(data.text)['book']
         asks = [_book[i] for i in range(len(_book)) if _book[i]['t'] == 'b']
         del asks[-1]
@@ -53,8 +53,8 @@ def update_order_book(book_name, base, trade):
 
     books.merge(book, 'Coinsquare', book_name, base, trade, spread)
 
-    pprint('Coinsquare bid=%s, ask=%s, spread=%s [%sms]' %(
-        book['bids'][0]['price'], book['asks'][0]['price'], spread, t1.clock(t='ms')))
+    #pprint('Coinsquare bid=%s, ask=%s, spread=%s [%sms]' %(
+    #    book['bids'][0]['price'], book['asks'][0]['price'], spread, t1.clock(t='ms')))
 
 #-------------------------------------------------------------------------------
 def update_ticker(book_name, base, trade):

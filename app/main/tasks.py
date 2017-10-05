@@ -40,7 +40,7 @@ def api_update(self, **rest):
     )
     trades = client.get_public_trades(time='hour')
     for trade in trades:
-        g.db['trades'].update_one(
+        r = g.db['trades'].update_one(
             {'tid':trade['tid']},
             {'$set':{
                 'tid':trade['tid'],
@@ -53,4 +53,7 @@ def api_update(self, **rest):
             }},
             True
         )
-    log.debug('inserted %s eth_cad trades', len(trades))
+        if r.modified_count and r.modified_count > 0:
+            log.info('QuadrigaCX eth_cad, p=%s, v=%s', trade['price'], trade['volume'])
+
+    log.debug('pulled %s eth_cad trades', len(trades))
