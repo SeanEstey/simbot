@@ -57,7 +57,10 @@ function getElapsedTime(t1) {
     return new Date().getTime() - t1.getTime();
 }
 
-
+//------------------------------------------------------------------------------
+function msToSec(time) {
+    return Number((time/1000).toFixed(0));
+}
 
 //------------------------------------------------------------------------------
 String.prototype.toTitleCase = function(n) {
@@ -69,7 +72,6 @@ String.prototype.toTitleCase = function(n) {
    s = s.replace(/_/g, ' ');
    return s.replace(/\b[a-z]/g,function(f){return f.toUpperCase()});
 }
-
 
 //------------------------------------------------------------------------------
 function toElapsedStr(ms) {

@@ -7,6 +7,7 @@ from app.lib.timer import Timer
 from bson import ObjectId as oid
 from . import books
 from app.main.sms import compose
+from app.main.socketio import smart_emit
 log = logging.getLogger(__name__)
 
 #---------------------------------------------------------------
@@ -170,7 +171,7 @@ class SimBot():
         """Evaluate each open holding, sell on margin criteria
         """
         _holdings = self.holdings(status='open')
-        log.debug('---SELL optionss---')
+        #log.debug('---SELL optionss---')
         for i in range(len(_holdings)):
             holding = _holdings[i]
             ticker = get_ex(exch=holding['exchange'], pair=holding['pair'])[0]
@@ -180,6 +181,7 @@ class SimBot():
 
             if margin >= self.rules['sell_margin']:
                 self.sell_market_order(holding, bid['price'], bid['volume'])
+                smart_emit('updateBot')
 
             #log.debug('holding #%s, exch=%s, p=%s, bid=%s, m=%s',
             #    i+1, holding['exchange'], holding['trades'][0]['price'], bid['price'], margin)
@@ -189,7 +191,7 @@ class SimBot():
         """TODO: if market average has moved and no buys for > 1 hour,
         make small buy to reset last buy price
         """
-        log.debug('---BUY options---')
+        #log.debug('---BUY options---')
         for ticker in get_ex():
             BUY = False
             ask = ticker['asks'][0]
@@ -201,8 +203,8 @@ class SimBot():
                 # Get recent holding BUY price. Buy order if ask price fallen below margin
                 recent_trade = holdings[-1]['trades'][0]
                 buy_margin = round(ask['price'] - recent_trade['price'],2)
-                log.debug('exch=%s, last_buy=%s, ask={p:%s, v:%s}, m=%s',
-                    ticker['name'], recent_trade['price'], ask['price'], round(ask['volume'],5), buy_margin)
+                #log.debug('exch=%s, last_buy=%s, ask={p:%s, v:%s}, m=%s',
+                #    ticker['name'], recent_trade['price'], ask['price'], round(ask['volume'],5), buy_margin)
                 if buy_margin <= self.rules['buy_margin']:
                     BUY = True
 
@@ -212,6 +214,7 @@ class SimBot():
                     ticker['book'],
                     ask['price'],
                     ask['volume'])
+                smart_emit('updateBot')
 
     #---------------------------------------------------------------
     def eval_arbitrage(self):
@@ -282,6 +285,7 @@ class SimBot():
             #   ex-B: transfer CAD=>ex-A
 
             log.info('TRADE complete, net_earn=%s', net_earn)
+            smart_emit('updateBot')
 
     #---------------------------------------------------------------
     def balance(self, exch=None, status=None):

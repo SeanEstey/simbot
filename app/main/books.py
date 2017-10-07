@@ -17,8 +17,8 @@ def order_vol(ex_name, pair, section, price=None):
         ex_doc = g.db['exchanges'].find_one({'name':ex_name, 'book':pair})
     top_order = ex_doc[section][0]
     vol_left = top_order['original'] - top_order.get('bot_consumed',0)
-    log.debug('%s %s vol_left=%s/%s',
-        ex_name, section[0:-1], round(vol_left,2), round(top_order['original'],2))
+    #log.debug('%s %s vol_left=%s/%s',
+    #    ex_name, section[0:-1], round(vol_left,2), round(top_order['original'],2))
     return vol_left
 
 #-------------------------------------------------------------------------------

@@ -1,9 +1,4 @@
 /* series.js */
-/* example series array: [
-    {'label':'Coinsquare', 'asset':'', 'time_lbl':'', 'data':[], 'selected_by':'exch_b'},
-    {'label':'QuadrigaCX', 'asset':'', 'time_lbl':'', 'data':[], 'selected_by':'exch_a'}
-]*/
-
 X_AXIS_PERIODS = 144;
 DAY_MS = 86400000;
 TIME_LEN = {
@@ -14,10 +9,21 @@ TIME_LEN = {
     '6m':DAY_MS*180,
     '1y':DAY_MS*360
 };
+
+/* example series array
+[{'label':'Coinsquare', 'asset':'btc', 'time_lbl':'1d', 'data':[]},
+{'label':'QuadrigaCX', 'asset':'btc', 'time_lbl':'1d', 'data':[]}]*/
 series = [];
 
 //------------------------------------------------------------------------------
-function buildDataPoints() {
+function drawSeries() {
+    destroyCharts();
+    var labels = ykeys = series.map(function(x){return x.label});
+    createChart(combineSeries(), 'time', ykeys, labels);
+}
+
+//------------------------------------------------------------------------------
+function combineSeries() {
     if(series.length < 1)
         return;
 
@@ -58,90 +64,39 @@ function getSeriesIdx(series_lbl=false, selected_by=false) {
 }
 
 //------------------------------------------------------------------------------
-function querySeriesData(label, asset, time_lbl) {
-    /* Synchronous POST request returning series data
-    */
+function querySeriesData(label, asset, time_lbl, handler) {
+    /* Synchronous POST request returning series data  */
     var data = null;
-    var timespan = getTimespan(time_lbl, units='s');
-
+    var tspan = getTimespan(time_lbl, units='s');
     $.ajax({
         type: 'POST',
         url: BASE_URL + '/trades/get',
-        data:{
-            exchange:label,
-            asset:asset,
-            since:timespan[0],
-            until:timespan[1]
-        },
-        async:false,
-        success:function(resp){
-            data = JSON.parse(resp);
-        }
-    });
-    return data;
-}
-
-//------------------------------------------------------------------------------
-function addSeries(label, asset, time_lbl) {
-    series.push({
-        label:label,
-        asset:asset,
-        time_lbl:time_lbl,
-        data:querySeriesData(label,asset,time_lbl)
+        data:{exchange:label, asset:asset, since:tspan[0], until:tspan[1]},
+        async:true,
+        success:function(resp){ handler(JSON.parse(resp)) }
     });
 }
 
 //------------------------------------------------------------------------------
 function rmvSeries(idx) {
     series.splice(idx,1);
+    drawSeries();
+}
+
+//------------------------------------------------------------------------------
+function addSeries(label, asset, time_lbl) {
+    querySeriesData(label, asset, time_lbl, function(data) {
+        series.push({label:label, asset:asset, time_lbl:time_lbl, data:data});
+        drawSeries();
+    });
 }
 
 //------------------------------------------------------------------------------
 function replaceSeries(idx, label, asset, time_lbl) {
-    series[idx] = {
-        label:label,
-        asset:asset,
-        time_lbl:time_lbl,
-        data:querySeriesData(label,asset,time_lbl)
-    }
-}
-
-//------------------------------------------------------------------------------
-function onSeriesChange($select) {
-    /* If asset or timespan changed, query datasets for selected exchanges.
-     *   If exchange changed, query single dataset
-     */
-    var time_lbl = $('#markets select[name="time_lbl"]').val();
-    var asset = $('#markets select[name="asset"]').val();
-
-    // Exchange select option(s) has been changed.
-    if(['exch_a','exch_b'].indexOf($select.prop('name')) > -1) {
-        var idx = getSeriesIdx($select.val());
-
-        if(idx>-1 && !$select.val())
-            rmvSeries(idx);
-        else if(idx>-1 && $select.val())
-            replaceSeries(idx, $select.val(), asset, time_lbl);
-        else if(idx == -1)
-            addSeries($select.val(), asset, time_lbl);
-    }
-    // Timespan/Asset value changed. Query data for all series.
-    else {
-        for(var idx=0; idx<series.length; idx++) {
-            replaceSeries(idx, series[i]['label'], asset, time_lbl);
-        }
-    }
-}
-
-//------------------------------------------------------------------------------
-function ytdLength() {
-    var now = new Date();
-    return DAY_MS*(now.getWeek()*7 + now.getDay());
-}
-
-//------------------------------------------------------------------------------
-function msToSec(time) {
-    return Number((time/1000).toFixed(0));
+    querySeriesData(label, asset, time_lbl, function(data) {
+        series[idx] = {label:label, asset:asset, time_lbl:time_lbl, data:data};
+        drawSeries();
+    });
 }
 
 //------------------------------------------------------------------------------
@@ -153,14 +108,11 @@ function getTimespan(lbl, units='ms') {
     var length = null;
     var today = new Date();
     var end = t_now = today.getTime();
-
     if(lbl == 'ytd')
         length = DAY_MS * (today.getWeek()*7 + today.getDay());
     else
         length = TIME_LEN[lbl];
-
     var start = length ? (t_now - length) : null;
-
     return units == 'ms' ? [start, end] : [msToSec(start), msToSec(end)];
 }
 
@@ -188,8 +140,14 @@ function fillDataGaps(datapoints) {
     for(var i=0; i<datapoints.length; i++) {
         var dp = datapoints[i];
         for(var k in datapoints[i]) {
-            if(!datapoints[i][k])
-                datapoints[i][k] = lastPrice(datapoints, k, i);
+            if(!datapoints[i][k]) { 
+                var last = lastPrice(datapoints, k, i);
+                if(last)
+                    datapoints[i][k] = last;
+                else {
+                    datapoints[i][k] = nextPrice(datapoints, k, i);
+                }
+            }
         }
     }
 }
@@ -201,4 +159,12 @@ function lastPrice(data, k, idx) {
             return data[i][k];
     }
     return null;
+}
+
+//------------------------------------------------------------------------------
+function nextPrice(data, k, idx) {
+    for(var i=idx; i<data.length; i++) {
+        if(data[i][k])
+            return data[i][k];
+    }
 }

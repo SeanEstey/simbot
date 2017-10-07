@@ -9,12 +9,12 @@ timezone = 'Canada/Mountain'
 task_time_limit = 300
 worker_concurrency = 1
 beat_schedule = {
-    'update': {
-        'task':'app.main.tasks.update',
-        'schedule': crontab(minute='*/1')
+    'update_exchanges': {
+        'task':'app.main.tasks.update_exchanges',
+        'schedule': 10.0
     },
-    'api_update': {
-        'task':'app.main.tasks.api_update',
-        'schedule': crontab(minute='*/1')
+    'update_bots': {
+        'task':'app.main.tasks.update_bots',
+        'schedule': 30.0
     }
 }

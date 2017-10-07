@@ -46,9 +46,6 @@ def get_trades():
 @main.route('/books/update', methods=['POST'])
 def _update_books():
     exchange = request.form.get('exchange')
-
     if exchange == 'Coinsquare':
-        coinsquare.update_books()
-    elif exchange == 'QuadrigaCX':
-        quadcx.update_books()
+        coinsquare.update('CAD', 'BTC')
     return 'OK'

@@ -64,10 +64,18 @@ def on_message(ws, message):
     if 'transaction_id' in data:
         data['currency'] = 'btc'
         data['date'] = parse(data['date'])
-        r = db['trades'].insert_one(data)
 
         print('%s, p=%s, v=%s, t=%s' %(
             data['exchange'], data['price'], data['volume'], data['value']))
+
+        if data['exchange'] == 'Coinsquare' or data['exchange'] == 'Kraken':
+            r = db['trades'].insert_one(data)
+
+        try:
+            r = requests.post('http://45.79.176.125/books/update', {'exchange':data['exchange']})
+        except Exception as e:
+            print(str(e))
+            pass
 
 def on_error(ws, error):
     """Daemon thread

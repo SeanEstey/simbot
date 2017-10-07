@@ -10,35 +10,74 @@ $mktPanl = $('#markets');
 $hldPanl = $('#holdings');
 
 //------------------------------------------------------------------------------
+function upd_val($elem, val) {
+    $elem.html(val);
+    $elem.css('background-color','rgba(255,255,0,1.0');
+    $elem.animate({'background-color':'rgba(255,255,255,0.0)'},1000);
+}
+
+//------------------------------------------------------------------------------
 function initMain() {
     initSlidePanel('holdings');
     initSlidePanel('markets');
     initChart('chart-contr','spinner');
     initEventHandlers();
+    initSocketIO();
     showBotSummary();
     showExchTickers();
     showHoldingsTable();
+
+    $('input[name="Coinsquare"]').click();
+    $('input[name="QuadrigaCX"]').click();
+}
+
+//------------------------------------------------------------------------------
+function initSocketIO() {
+    socket = io.connect('http://45.79.176.125');
+    socket.on('connect', function(){
+        console.log('socket.io connected!');
+    });
+    socket.on('updateHoldings', function(data){
+        console.log('event=updateHoldings');
+        showHoldingsTable();
+    });
+    socket.on('updateTickers', function(data){
+        console.log('event=updateTickers');
+        showExchTickers();
+    });
+    socket.on('updateBot', function(data){
+        console.log('event=updateBot');
+        showBotSummary();
+    });
 }
 
 //------------------------------------------------------------------------------
 function initEventHandlers() {
+    $('#markets input[type="checkbox"]').change(function() {
+        var time_lbl = $('#markets select[name="time_lbl"]').val();
+        var asset = $('#markets select[name="asset"]').val();
+        var series_lbl = $(this).prop('name');
+        if($(this)[0].checked) {
+            addSeries(series_lbl, asset, time_lbl);
+        }
+        else if(!$(this)[0].checked) {
+            var idx = getSeriesIdx(series_lbl);
+            rmvSeries(idx);
+        }
+    });
     $('#markets select').change(function(){
         showSpinner(true);
-        onSeriesChange($(this));
-        renderMarketChart();
-	});
+        var time_lbl = $('#markets select[name="time_lbl"]').val();
+        var asset = $('#markets select[name="asset"]').val();
+        for(var idx=0; idx<series.length; idx++)
+            replaceSeries(idx, series[idx]['label'], asset, time_lbl);
+    });
     $(window).resize(function(){
         // Adjust side frame height to 100%
         $('#side_frm').height($(window).height() - $(".banner").height());
         resizeChart();
     })
     $(window).resize();
-}
-
-//------------------------------------------------------------------------------
-function renderMarketChart() {
-    var labels = ykeys = series.map(function(x){return x.label});
-    drawChart(buildDataPoints(), 'time', ykeys, labels);
 }
 
 //------------------------------------------------------------------------------
@@ -49,11 +88,11 @@ function showBotSummary() {
             var stats = JSON.parse(response);
             $('#earnings').html('$'+abbr(stats['earnings'],1));
             $('#cad_traded').html('$'+abbr(stats['cad_traded'],1));
-            $('#btc').html(num_format(stats['btc'],5));
-            $('#eth').html(num_format(stats['eth'],5));
-            $('#n_hold_open').html(num_format(stats['n_hold_open']));
-            $('#n_hold_closed').html(num_format(stats['n_hold_closed']));
-            $('#n_trades').html(num_format(stats['n_trades']));
+            upd_val($('#btc'), num_format(stats['btc'],5));
+            upd_val($('#eth'), num_format(stats['eth'],5));
+            upd_val($('#n_hold_open'), num_format(stats['n_hold_open']));
+            upd_val($('#n_hold_closed'), num_format(stats['n_hold_closed']));
+            upd_val($('#n_trades'), num_format(stats['n_trades']));
         }
     );
 }
@@ -72,6 +111,8 @@ function showExchTickers() {
                 return 0;
             });
 
+            $('#tickers').empty();
+
             for(var i=0; i<tickers.length; i++) {
                 var book = tickers[i];
                 delete book['_id'];
@@ -79,10 +120,12 @@ function showExchTickers() {
                 var $item = $('#ticker-item').clone().prop('id',t_id);
                 $item.find('#exch').text(book['name']);
                 $item.find('#trade-pair').text(book['base'].toUpperCase()+'/'+book['trade'].toUpperCase());
-                $item.find('#bid').text('$' + num_format(book['bid'],0));
-                $item.find('#ask').text('$'+ num_format(book['ask'],0));
-                $item.find('#low').text('$'+ num_format(book['low'] || "",0));
-                $item.find('#high').text('$'+ num_format(book['high'] || "",0));
+                
+                upd_val($item.find('#bid'), '$'+num_format(book['bid'],0));
+                upd_val($item.find('#ask'), '$'+num_format(book['ask'],0));
+                upd_val($item.find('#low'), '$'+num_format(book['low'] || '',0));
+                upd_val($item.find('#high'), '$'+num_format(book['high'] || '',0));
+
                 $item.find('#book-json').jsonview(book);
                 $('#tickers').append($item);
                 $item.find('#book-json .expanded').trigger('click');
@@ -135,20 +178,14 @@ function showHoldingsTable() {
         data=null,
         function(response){
             gHoldings = JSON.parse(response);
-
             buildDataTable(
                 TBL_ID,
-                gColumnDefs.map(function(x){
-                    return x.column
-                }),
-                gColumnDefs.map(function(x){
-                    return x.columnDef ? x.columnDef : false; 
-                }),
+                gColumnDefs.map(function(x){ return x.column }),
+                gColumnDefs.map(function(x){ return x.columnDef ? x.columnDef : false; }),
                 formatData()
             );
             applyCustomization(TBL_ID);
             calcSimDuration();
-            ///resizeCanvas();
         });
 }
 

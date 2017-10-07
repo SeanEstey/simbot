@@ -3,6 +3,7 @@ import eventlet, os, time, sys, getopt
 from os import environ, system
 from flask import current_app, g, session
 from app import create_app
+from app.main.socketio import sio_server
 app = create_app('app')
 
 #-------------------------------------------------------------------------------
@@ -43,13 +44,21 @@ def main(argv):
     set_environ(app)
     workers.kill()
     time.sleep(1)
+
+    sio_server.init_app(app, async_mode='eventlet', message_queue='amqp://')
+
     if bool(environ.get('CELERY',False)):
         workers.start(beat=bool(environ.get('BEAT',False)))
     time.sleep(1)
     startup_msg(app, show_celery=False)
 
     app.logger.info("Server ready @%s", app.config['LOCAL_URL'])
-    app.run(host='127.0.0.1', port=8000, debug=app.config['DEBUG'])
+
+    sio_server.run(
+        app,
+        host='127.0.0.1',
+        port=8000,
+        debug=app.config['DEBUG'])
 
 #-------------------------------------------------------------------------------
 if __name__ == "__main__":

@@ -1,12 +1,11 @@
 /* charts.js */
-
 SPIN_DURATION = 3000;
 SPIN_ROT_DIST = 360;
 MAX_CHART_HT = 400;
 
 prev_wdt = null;
 // Rendered morris chart instance
-areaChart = null; 
+areaCharts=[];
 // Div container for morris chart elements
 $chartContr = null; 
 g_chart_contr_id = null;
@@ -36,10 +35,10 @@ function initChart(contr_id, spin_id) {
 }
 
 //------------------------------------------------------------------------------
-function drawChart(data, xkey, ykeys, labels) {
+function createChart(data, xkey, ykeys, labels) {
     showSpinner(false);
 
-    areaChart = Morris.Area({
+    areaCharts.push(Morris.Area({
         element:g_chart_contr_id,
         data:data,
         xkey:'time',
@@ -48,24 +47,25 @@ function drawChart(data, xkey, ykeys, labels) {
         ymin:'auto',
         ymax:'auto',
         smooth:false,
-        lineColors:['#5cb85c','#136d8d'],
+        lineColors:['#5cb85c','#136d8d', 'red'],
         pointSize:0,
         pointStrokeColors:['black'],
         pointFillColors:['white'],
-        fillOpacity: 0.6,
+        fillOpacity: 0.3,
         dateFormat: function(x) { return new Date(x).toLocaleString()},
         hideHover:'auto',
         preUnits:'$',
         behaveLikeLine:true,
         resize:true
-    });
+    })
+    )
 }
 
 //-----------------------------------------------------------------------------
 function resizeChart() {
     /* Resize/redraw chart if window/panel has been resized
     */
-    if(!areaChart || !$chartContr || $chartContr.width()==prev_wdt)
+    if(areaCharts.length<1 || !$chartContr || $chartContr.width()==prev_wdt)
         return;
     if($chartContr.height() > MAX_CHART_HT)
         $chartContr.height(MAX_CHART_HT);
@@ -88,9 +88,15 @@ function resizeChart() {
 
     $('svg').height(MAX_CHART_HT - 50);
     $('svg').width($chartContr.width());
-    $('#side_frm').height($('#main_frm').height());
-
+    //$('#side_frm').height($('#main_frm').height());
     //console.log('resizing chart, w='+$chartContr.width()+', h='+$chartContr.height());
+}
+
+//------------------------------------------------------------------------------
+function destroyCharts() {
+    $chartContr.find('svg').remove();
+    $chartContr.find('.morris-hover').remove();
+    areaCharts=[];
 }
 
 //------------------------------------------------------------------------------
