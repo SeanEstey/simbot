@@ -1,143 +1,305 @@
-/* charts.js */
-SPIN_DURATION = 3000;
-SPIN_ROT_DIST = 360;
-MAX_CHART_HT = 400;
+/* charts.js
+    Reformat Series Objects to format:
+        {
+            "label": <str>,         // series label
+            "asset": <str>,         // btc, eth, etc
+            "timespan": {
+                "label": <str>      // 1d, 7d, 1m, 1y, etc
+                "start": <int>,     // timestamp in s
+                "end": <int>        // timestamp in s
+            },
+            "ykey": <str>,          // which key in data[]
+            "url": <str>,
+            "data": []
+        }
+*/
 
-prev_wdt = null;
-// Rendered morris chart instance
-areaCharts=[];
-// Div container for morris chart elements
-$chartContr = null; 
-g_chart_contr_id = null;
-g_spin_id = null;
-// jCanvas animated chart spinner
-$spin = null; 
+X_AXIS_PERIODS = 144;
+DAY_MS = 86400000;
+TIME_LEN = {
+    '1d':DAY_MS,
+    '7d':DAY_MS*7,
+    '1m':DAY_MS*30,
+    '3m':DAY_MS*90,
+    '6m':DAY_MS*180,
+    '1y':DAY_MS*360
+};
 
 //-----------------------------------------------------------------------------
-function initChart(contr_id, spin_id) {
-    /*@contr_id: ID of chart container <div>
-     * @spin_id: ID of spinner <canvas>
-     */
-    g_chart_contr_id = contr_id;
-    g_spin_id = spin_id;
-    $chartContr = $('#'+contr_id);
-    prev_wdt = $chartContr.width();
-
+function Chart(contId, type) {
+    this.MaxHeight = 400;
+    this.SpinCycleDegrees = 360;
+    this.SpinDuration = 3000;
+    this.morrisObj = null;
+    this.series = [];
+    this.type = type;
+    this.contId = contId;
+    this.$cont = $('#'+this.contId);
     // DOM spinner canvas element (DOM coord system)
-    var cv = document.getElementById(spin_id);
-    cv.width = $chartContr.width();
-    cv.height = $chartContr.height();
-
+    this.spinnerId = contId + '-spinner';
+    this.$cont.find('canvas').prop('id', this.spinnerId);
+    this.cv = document.getElementById(this.spinnerId);
+    this.cv.width = this.$cont.width();
+    this.cv.height = this.$cont.height();
     // jCanvas spinner object (internal coord system)
-    $spin = $('#'+spin_id);
-    $spin.width(cv.width);
-    $spin.height(cv.height);
-}
-
-//------------------------------------------------------------------------------
-function createChart(data, xkey, ykeys, labels) {
-    showSpinner(false);
-
-    areaCharts.push(Morris.Area({
-        element:g_chart_contr_id,
-        data:data,
-        xkey:'time',
-        ykeys:ykeys,
-        labels:labels,
-        ymin:'auto',
-        ymax:'auto',
-        smooth:false,
-        lineColors:['#5cb85c','#136d8d', 'red'],
-        pointSize:0,
-        pointStrokeColors:['black'],
-        pointFillColors:['white'],
-        fillOpacity: 0.3,
-        dateFormat: function(x) { return new Date(x).toLocaleString()},
-        hideHover:'auto',
-        preUnits:'$',
-        behaveLikeLine:true,
-        resize:true
-    })
-    )
+    this.$spinner = $('#'+this.spinnerId);
+    this.$spinner.width(this.cv.width);
+    this.$spinner.height(this.cv.height);
+    this.prevWidth = this.$cont.width();
 }
 
 //-----------------------------------------------------------------------------
-function resizeChart() {
+Chart.prototype.resize = function() {
     /* Resize/redraw chart if window/panel has been resized
     */
-    if(areaCharts.length<1 || !$chartContr || $chartContr.width()==prev_wdt)
+    if(!this.morrisObj || !this.$cont || this.$cont.width()==this.prevWidth)
         return;
-    if($chartContr.height() > MAX_CHART_HT)
-        $chartContr.height(MAX_CHART_HT);
-    prev_wdt = $chartContr.width();
-
+    if(this.$cont.height() > this.MaxHeight)
+        this.$cont.height(this.MaxHeight);
+    this.prevWidth = this.$cont.width();
     // Resize canvas coordinate dimensions
-    var cv = document.getElementById(g_spin_id);
-    cv.width = prev_wdt
-
+    this.cv.width = this.prevWidth;
     // Resize jCanvas DOM dimensions
-    $spin.width(cv.width);
-    $spin.height(cv.height);
+    this.$spinner.width(this.cv.width);
+    this.$spinner.height(this.cv.height);
     // Adjust jCanvas layer positions
-    var layers = $spin.getLayers();
+    var layers = this.$spinner.getLayers();
     for(var i=0; i<layers.length; i++) {
         var layer = layers[i];
-        layer.x = cv.width/2 - layer.width/2;
+        layer.x = this.cv.width/2 - layer.width/2;
     }
-    $spin.drawLayers();
-
-    $('svg').height(MAX_CHART_HT - 50);
-    $('svg').width($chartContr.width());
-    //$('#side_frm').height($('#main_frm').height());
-    //console.log('resizing chart, w='+$chartContr.width()+', h='+$chartContr.height());
+    this.$spinner.drawLayers();
+    this.$cont.find('svg').height(this.MaxHeight - 50);
+    this.$cont.find('svg').width(this.$cont.width());
 }
 
 //------------------------------------------------------------------------------
-function destroyCharts() {
-    $chartContr.find('svg').remove();
-    $chartContr.find('.morris-hover').remove();
-    areaCharts=[];
+Chart.prototype.draw = function() {
+    /* Draw chart from series data.
+    */
+    this.erase();
+    this.toggleSpinner(false);
+    this.morrisObj = Morris.Area({
+        element: this.contId,
+        data: this.combineSeries(),
+        xkey: 'time',
+        ykeys: this.series.map(function(x){return x.label}),
+        labels: this.series.map(function(x){return x.label}),
+        ymin: 'auto',
+        ymax: 'auto',
+        smooth: false,
+        pointSize: 0,
+        pointStrokeColors: ['black'],
+        pointFillColors: ['white'],
+        lineColors: ['#5cb85c','#136d8d', 'red'],
+        fillOpacity: 0.3,
+        dateFormat: function(x) { return new Date(x).toLocaleString()},
+        hideHover: 'auto',
+        //preUnits: '$',
+        behaveLikeLine: true,
+        resize: true
+    });
 }
 
 //------------------------------------------------------------------------------
-function showSpinner(show) {
+Chart.prototype.erase = function() {
+    this.$cont.find('svg').remove();
+    this.$cont.find('.morris-hover').remove();
+    this.morrisObj = null;
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.toggleSpinner = function(bShow) {
     /* Rotating star spinner displayed while charts are loading.
     */
-    if(!$spin)
+    if(!this.$spinner)
         return;
 
-    if(!$spin.getLayer('loader')) {
-        var cv = document.getElementById(g_spin_id);
+    if(!this.$spinner.getLayer('loader')) {
         // Initial drawing.
-        $spin.drawPolygon({
+        this.$spinner.drawPolygon({
             layer:true, name:'loader', fillStyle:'rgba(39, 155, 190, 0.5)',
-            x:cv.width/2, y:cv.height/2, radius:50, sides:5, concavity:0.5
+            x:this.cv.width/2, y:this.cv.height/2, radius:50, sides:5, concavity:0.5
         });
-        $spin.drawLayers();
+        this.$spinner.drawLayers();
     }
 
-    if(show) {
-        $('#markets .analy-hdr').hide();
-        $chartContr.find('svg').remove();
-        $chartContr.find('.morris-hover').remove();
-        $spin.getLayer('loader').visible = true;
-        $spin.show();
-        rotateSpinner();
+    if(bShow) {
+        //$('#markets .analy-hdr').hide();
+        this.$cont.find('svg').remove();
+        this.$cont.find('.morris-hover').remove();
+        this.$spinner.getLayer('loader').visible = true;
+        this.$spinner.show();
+        this.rotateSpinner();
     }
     else {
-        $('#markets .analy-hdr').show();
-        $spin.getLayer('loader').visible = false;
-        $spin.hide();
+        //$('#markets .analy-hdr').show();
+        this.$spinner.getLayer('loader').visible = false;
+        this.$spinner.hide();
     }
 }
 
 //------------------------------------------------------------------------------
-function rotateSpinner() {
-    SPIN_ROT_DIST *= -1;
-    $spin.animateLayer(
-        'loader',
-        { rotate:SPIN_ROT_DIST },
-        SPIN_DURATION,
-        rotateSpinner
-    );
+Chart.prototype.rotateSpinner = function() {
+    if(this instanceof Chart) {
+        this.SpinCycleDegrees *= -1;
+        this.$spinner.animateLayer(
+            'loader',
+            { rotate:this.SpinCycleDegrees },
+            this.SpinDuration,
+            this.rotateSpinner
+        );
+    }
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.combineSeries = function() {
+        marketChart.resize();
+    if(this.series.length < 1)
+        return;
+
+    var span = this.getTimespan(this.series[0]['time_lbl'], units='ms');
+    var period_len = (span[1]-span[0]) / X_AXIS_PERIODS; 
+    var data = [];
+
+    // Create datapoints by combining series data for each time period.
+    for(var i=0; i<X_AXIS_PERIODS; i++) {
+        var start = span[0] + (i*period_len);
+        var end = start + period_len;
+        var point = { 'time':start };
+        for(var j=0; j<this.series.length; j++) {
+            var average = this.yValueAvg(this.series[j]['data'], this.series[j]['ykey'], start, end);
+            point[this.series[j]['label']] = average;
+        }
+        data.push(point);
+    }
+    this.fillDataGaps(data);
+    //console.log(data);
+    return data;
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.getSeriesIdx = function(series_lbl=false, selected_by=false) {
+    var k = v = null;
+    if(typeof series_lbl !== 'undefined') {
+        k = 'label';
+        v = series_lbl;
+    }
+    else if(typeof selected_by !== 'undefined') {
+        k = 'selected_by';
+        v = selected_by;
+    }
+    for(var idx=0; idx<this.series.length; idx++) {
+        if(this.series[idx][k] == v) return idx;
+    }
+    return -1;
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.querySeriesData = function(url, series_lbl, ex, asset, ykey, time_lbl, idx) {
+    /* POST request returning series data  */
+
+    var data = null;
+    var tspan = this.getTimespan(time_lbl, units='s');
+
+    $.ajax({
+        type: 'POST',
+        url: BASE_URL + url,
+        data:{
+            ex:ex,
+            asset:asset,
+            ykey:ykey,
+            since:tspan[0],
+            until:tspan[1]},
+        async:true,
+        context: this,
+        success:function(json){ 
+            var data = JSON.parse(json);
+            //console.log(data);
+
+            if(idx > this.series.length)
+                this.series.push({label:series_lbl, ex:ex, asset:asset, ykey:ykey, time_lbl:time_lbl, data:data});
+            else
+                this.series[idx] = {label:series_lbl, ex:ex, asset:asset, ykey:ykey, time_lbl:time_lbl, data:data};
+
+            this.draw();
+        }
+    });
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.rmvSeries = function(idx) {
+    this.series.splice(idx,1);
+    this.draw();
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.addSeries = function(series_lbl, ex, asset, ykey, time_lbl, url) {
+    this.querySeriesData(url, series_lbl, ex, asset, ykey, time_lbl, this.series.length+1);
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.replaceSeries = function(idx, series_lbl, ex, asset, ykey, time_lbl, url) {
+    this.querySeriesData(url, series_lbl, ex, asset, ykey, time_lbl, idx);
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.getTimespan = function(lbl, units='ms') {
+    /* @lbl: series duration label ('1d','7d','6m',etc)
+     * @units: result format. 'ms' or 's'
+     * Returns: array of ints [t_start, t_end]
+    */
+    var length = null;
+    var today = new Date();
+    var end = t_now = today.getTime();
+    if(lbl == 'ytd')
+        length = DAY_MS * (today.getWeek()*7 + today.getDay());
+    else
+        length = TIME_LEN[lbl];
+    var start = length ? (t_now - length) : null;
+    return units == 'ms' ? [start, end] : [msToSec(start), msToSec(end)];
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.yValueAvg = function(data, k, start, end) {
+    /* Price average within time period
+    */
+    var y_values = data.filter(
+        function(elem, j, data) {
+            var d = elem['date']['$date'];
+            if(d >= start && d < end) return elem;
+        }
+    ).map(function(x) { return x[k] });
+
+    if(y_values.length == 0)
+        return null;
+    else
+        return Number((y_values.reduce(function(a,b){
+            return a+b 
+        })/y_values.length).toFixed(0))
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.fillDataGaps = function(datapoints) {
+    for(var i=0; i<datapoints.length; i++) {
+        var dp = datapoints[i];
+        for(var k in datapoints[i]) {
+            if(!datapoints[i][k]) { 
+                var last = null;
+                for(var j=i; j>=0; j--) {
+                    if(datapoints[j][k])
+                        last = datapoints[j][k];
+                }
+
+                if(last)
+                    datapoints[i][k] = last;
+                else {
+                    for(var j=i; j<datapoints.length; j++) {
+                        if(datapoints[j][k])
+                            datapoints[i][k] = datapoints[j][k];
+                    }
+                }
+            }
+        }
+    }
 }

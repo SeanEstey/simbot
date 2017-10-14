@@ -40,9 +40,9 @@ def update_order_book(book_name, base, trade):
         ]
     }
 
-    # TODO: Move to update_ticker()
     spread = round(orders['asks'][0]['price'] - orders['bids'][0]['price'], 2)
     books.merge(orders, 'QuadrigaCX', book_name, base, trade, spread)
+
     #pprint('QuadrigaCX bid=%s, ask=%s, spread=%s [%sms]' %(
     #    orders['bids'][0]['price'], orders['asks'][0]['price'], spread, t1.clock(t='ms')))
 
@@ -67,7 +67,7 @@ def update_ticker(book_name, base, trade):
 
     #spread = round(orders['asks'][0]['price'] - orders['bids'][0]['price'], 2)
 
-    res = g.db['trades'].find(
+    res = g.db['pub_trades'].find(
         {'exchange':'QuadrigaCX', 'currency':trade}
     ).sort('$natural',-1).limit(1)
     if res.count() > 0:

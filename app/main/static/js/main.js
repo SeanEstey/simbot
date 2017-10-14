@@ -1,5 +1,4 @@
 /* main.js  */
-
 num_format = Sugar.Number.format;
 abbr = Sugar.Number.abbr;
 BASE_URL = "http://45.79.176.125";
@@ -8,27 +7,23 @@ gHoldings = null; // Raw holdings data returned from server
 gDatatable = null; // Datatable instance
 $mktPanl = $('#markets');
 $hldPanl = $('#holdings');
-
-//------------------------------------------------------------------------------
-function upd_val($elem, val) {
-    $elem.html(val);
-    $elem.css('background-color','rgba(255,255,0,1.0');
-    $elem.animate({'background-color':'rgba(255,255,255,0.0)'},1000);
-}
+marketChart = null;
+orderBookCharts = null;
 
 //------------------------------------------------------------------------------
 function initMain() {
     initSlidePanel('holdings');
     initSlidePanel('markets');
-    initChart('chart-contr','spinner');
-    initEventHandlers();
-    initSocketIO();
+    initSlidePanel('orders');
+
     showBotSummary();
     showExchTickers();
     showHoldingsTable();
+    showOrderBookCharts();
+    showMarketChart();
 
-    $('input[name="Coinsquare"]').click();
-    $('input[name="QuadrigaCX"]').click();
+    initEventHandlers();
+    initSocketIO();
 }
 
 //------------------------------------------------------------------------------
@@ -53,31 +48,58 @@ function initSocketIO() {
 
 //------------------------------------------------------------------------------
 function initEventHandlers() {
+    $(window).resize(function(){
+        // Adjust side frame height to 100%
+        $('#side_frm').height($(window).height() - $(".banner").height());
+    })
+    $(window).resize();
+}
+
+//------------------------------------------------------------------------------
+function showOrderBookCharts() {
+    orderBookCharts = new Chart('ord-chrt-contr', 'Area');
+    orderBookCharts.toggleSpinner(true);
+    orderBookCharts.addSeries('v_ask', 'QuadrigaCX', 'btc', 'v_ask', '1d', '/books/get');
+    orderBookCharts.addSeries('v_bid', 'QuadrigaCX', 'btc', 'v_bid', '1d', '/books/get');
+
+    $(window).resize(function(){
+        orderBookCharts.resize();
+    })
+}
+
+//------------------------------------------------------------------------------
+function showMarketChart() {
+    marketChart = new Chart('chart-contr', 'Area');
+
     $('#markets input[type="checkbox"]').change(function() {
         var time_lbl = $('#markets select[name="time_lbl"]').val();
         var asset = $('#markets select[name="asset"]').val();
         var series_lbl = $(this).prop('name');
         if($(this)[0].checked) {
-            addSeries(series_lbl, asset, time_lbl);
+            marketChart.toggleSpinner(true);
+            marketChart.addSeries(series_lbl, series_lbl, asset, 'price', time_lbl, '/trades/get');
         }
         else if(!$(this)[0].checked) {
-            var idx = getSeriesIdx(series_lbl);
-            rmvSeries(idx);
+            marketChart.toggleSpinner(true);
+            var idx = marketChart.getSeriesIdx(series_lbl);
+            marketChart.rmvSeries(idx);
         }
     });
     $('#markets select').change(function(){
-        showSpinner(true);
+        marketChart.toggleSpinner(true);
         var time_lbl = $('#markets select[name="time_lbl"]').val();
         var asset = $('#markets select[name="asset"]').val();
-        for(var idx=0; idx<series.length; idx++)
-            replaceSeries(idx, series[idx]['label'], asset, time_lbl);
+
+        for(var idx=0; idx<marketChart.series.length; idx++) {
+            marketChart.replaceSeries(idx, marketChart.series[idx]['label'], marketChart.series[idx]['label'], asset, 'price', time_lbl, '/trades/get');
+        }
     });
+
+    $('input[name="QuadrigaCX"]').click();
+
     $(window).resize(function(){
-        // Adjust side frame height to 100%
-        $('#side_frm').height($(window).height() - $(".banner").height());
-        resizeChart();
+        marketChart.resize();
     })
-    $(window).resize();
 }
 
 //------------------------------------------------------------------------------
@@ -86,6 +108,7 @@ function showBotSummary() {
         null,
         function(response){
             var stats = JSON.parse(response);
+            //console.log(stats['accounts']);
             $('#earnings').html('$'+abbr(stats['earnings'],1));
             $('#cad_traded').html('$'+abbr(stats['cad_traded'],1));
             upd_val($('#btc'), num_format(stats['btc'],5));
@@ -190,9 +213,32 @@ function showHoldingsTable() {
 }
 
 //------------------------------------------------------------------------------
+function showBookIndicators() {
+    api_call('/books/indicators', data=null, function(response) {
+        var data = JSON.parse(response);
+
+        for(var i=0; i<data.length; i++) {
+            delete data[i]['_id'];
+            delete data[i]['date'];
+        }
+
+        $('#ord-ind').jsonview(data);
+        $('span:contains("bids")').prev().click();
+        $('span:contains("asks")').prev().click();
+    });
+}
+
+//------------------------------------------------------------------------------
 function calcSimDuration() {
     var start = objectIdToDate(gHoldings[0]['_id']['$oid']);
     var end = objectIdToDate(gHoldings[gHoldings.length-1]['_id']['$oid']);
     var duration = (end.getTime()-start.getTime())/1000/3600;
     $('#duration').text($('#duration').text() + ' ' + num_format(duration,1) + ' Hrs');
+}
+
+//------------------------------------------------------------------------------
+function upd_val($elem, val) {
+    $elem.html(val);
+    $elem.css('background-color','rgba(255,255,0,1.0');
+    $elem.animate({'background-color':'rgba(255,255,255,0.0)'},1000);
 }

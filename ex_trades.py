@@ -69,7 +69,7 @@ def on_message(ws, message):
             data['exchange'], data['price'], data['volume'], data['value']))
 
         if data['exchange'] == 'Coinsquare' or data['exchange'] == 'Kraken':
-            r = db['trades'].insert_one(data)
+            r = db['pub_trades'].insert_one(data)
 
         try:
             r = requests.post('http://45.79.176.125/books/update', {'exchange':data['exchange']})

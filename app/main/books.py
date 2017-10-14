@@ -6,20 +6,36 @@ from app.lib.timer import Timer
 log = getLogger(__name__)
 
 #-------------------------------------------------------------------------------
-def order_vol(ex_name, pair, section, price=None):
-    """Volume remaining for highest bid/lowest ask adjusted for simulation
-    consumption.
+def get_bid(exch, pair):
+    """Find the highest bid price/volume not consumed by simulation.
     """
-    if price:
-        k = section[0:-1]
-        ex_doc = g.db['exchanges'].find_one({'name':ex_name, 'book':pair, k:price})
-    else:
-        ex_doc = g.db['exchanges'].find_one({'name':ex_name, 'book':pair})
-    top_order = ex_doc[section][0]
-    vol_left = top_order['original'] - top_order.get('bot_consumed',0)
-    #log.debug('%s %s vol_left=%s/%s',
-    #    ex_name, section[0:-1], round(vol_left,2), round(top_order['original'],2))
-    return vol_left
+    bids = g.db['exchanges'].find_one({'name':exch, 'book':pair})['bids']
+    idx=0
+    while idx<len(bids):
+        bid = bids[idx]
+        vol_remain = bid['original'] - bid.get('bot_consumed',0)
+        if vol_remain > 0:
+            return {'price':bid['price'], 'volume':vol_remain}
+        idx+=1
+    return None
+
+def fill_limit_order(ex, pair):
+    pass
+
+
+#-------------------------------------------------------------------------------
+def get_ask(exch, pair):
+    """Find the lowest ask price/vol not consumed by simulation.
+    """
+    asks = g.db['exchanges'].find_one({'name':exch, 'book':pair})['asks']
+    idx=0
+    while idx<len(asks):
+        ask = asks[idx]
+        vol_remain = ask['original'] - ask.get('bot_consumed',0)
+        if vol_remain > 0:
+            return {'price':ask['price'], 'volume':vol_remain}
+        idx+=1
+    return None
 
 #-------------------------------------------------------------------------------
 def update(ex_name, pair, section, bot_id, vol_consumed):
