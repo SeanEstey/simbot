@@ -20,17 +20,41 @@
   <script> jQuery(function($){initMain()}) </script>
 {% endblock %}
 {% block content %}
-  <!--Top Section-->
-  <div class="banner d-flex justify-content-between p-2 pl-3">
-    <div class="d-flex" id="logo">
-      <span><img class="mr-2" style="height:32px; width:32px" src="{{url_for("static",
-      filename="main/images/simbot-icon.jpg")}}"></span>
-      <h5 class="mt-2 logo">SIMBOT</h5>
+
+<div id="navs" class="container-fluid p-0">
+  <nav id="main-nav" class="navbar navbar-toggleable-md navbar-light justify-content-between pt-2" style="display:flex; border-bottom: 1px solid rgba(0,0,0,0.13);">
+    <button id="menu-toggle-btn" class="navbar-toggler collapsed" style="display:none;" type="button"
+      data-toggle="collapse" data-target="#invisi-nav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="d-flex">
+      <a id="logo_a" class="navbar-brand text-center my-auto pb-0 pt-0" style="position:relative; left:0px;" href="/">
+        <div class="d-flex">
+          <img class="mr-2" style="height:32px; width:32px" src="{{url_for("static", filename="main/images/simbot-icon.jpg")}}">
+          <h5 class="mt-2 logo">SIMBOT</h5>
+        </div>
+      </a>
+      <ul id="main-menu" class="navbar-nav justify-content-center" style="flex-direction: row; margin: 0rem 0.5rem;">
+        <li class="d-flex nav-item">
+          <a class="nav-link d-flex pb-2" style="color:#136d8d" href="/">
+            <i class="fa fa-flask fa-2x mr-1"></i>
+            <span class="my-auto">Simulations</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link d-flex" style="color:#136d8d" href="/analysis">
+          <i class="fa fa-area-chart fa-2x mr-1"></i>
+          <span class="my-auto">Analysis</span>
+          </a>
+        </li>
+      </ul>
     </div>
     <div class="d-flex" id="tickers">
       <!--Ticker books inserted here-->
     </div>
-  </div>
+  </nav>
+</div>
+<div class="container-fluid">
   <div class="row" style="">
     <!--Left Frame-->
     <div id="side_frm" class="l-pane col-xl-2 col-12 text-center p-0">
@@ -127,74 +151,111 @@
         </div>
       </div>
 
-      <!--Markets Panel-->
-      <div id="markets" class="slide-panel mb-4">
-        <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-          <span><h3 class="mb-0">Markets</h3></span>
-          <span class="min-max pull-right" data-toggle="collapse" data-target="#mkt-bdy" style="color:#74480a">
-            <i class="fa fa-window-minimize text-right"></i>
-          </span>
-        </div>
-        <div id="mkt-bdy" class="panel-bdy collapse show">
-          <div class="analy-hdr text-left pt-3 px-3">
-            <label class="custom-control custom-checkbox">
-              <input name="QuadrigaCX" type="checkbox" class="custom-control-input">
-              <span class="custom-control-indicator"></span>
-              <span class="custom-control-description">QuadrigaCX</span>
-            </label>
-            <label class="custom-control custom-checkbox">
-              <input name="Coinsquare" type="checkbox" class="custom-control-input">
-              <span class="custom-control-indicator"></span>
-              <span class="custom-control-description">Coinsquare</span>
-            </label>
-            <label class="custom-control custom-checkbox">
-              <input name="Kraken" type="checkbox" class="custom-control-input">
-              <span class="custom-control-indicator"></span>
-              <span class="custom-control-description">Kraken</span>
-            </label>
-            <label class="mr-4">
-              <select name="asset" aria-controls="chart" class="form-control form-control-sm">
-                <option value="btc">BTC</option>
-                <option value="eth">ETH</option>
-              </select>
-            </label>
-            <label class="mr-4">
-              <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
-                <option value="1d">1 Day</option>
-                <option value="7d">1 Week</option>
-                <option value="1m">1 Month</option>
-                <option value="3m">3 Months</option>
-                <option value="6m">6 Months</option>
-                <option value="ytd">YTD</option>
-                <option value="1y">1 Year</option>
-                <option value="all">All</option>
-              </select>
-            </label>
-          </div>
-          <div class="chart text-center p-0" style="width:100%; height:100%;" id="chart-contr"> 
-            <canvas id="spinner" style="width:1198px; height:100%"></canvas>
-            <!--Morris.js Chart-->
-          </div>
-        </div>
-      </div>
 
-      <!--Order Book Analysis-->
-      <div id="orders" class="slide-panel">
-        <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-          <span><h3 class="mb-0">Order Books</h3></span>
-          <span class="min-max pull-right" data-toggle="collapse" data-target="#ord-bdy" style="color:#74480a">
-            <i class="fa fa-window-minimize text-right"></i>
-          </span>
-        </div>
-        <div id="ord-bdy" class="panel-bdy collapse show">
-          <div class="chart text-center p-0" style="width:100%; height:100%;" id="ord-chrt-contr"> 
-            <canvas id="spinner" style="width:1198px; height:100%"></canvas>
-            <!--Morris.js Chart-->
+      <div class="row no-gutters">
+        <!--Markets Panel-->
+        <div id="markets" style="" class="col-xl-12 slide-panel mb-4">
+          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+            <span><h3 class="mb-0">Markets</h3></span>
+            <span class="min-max pull-right" data-toggle="collapse" data-target="#mkt-bdy" style="color:#74480a">
+              <i class="fa fa-window-minimize text-right"></i>
+            </span>
           </div>
-          <!--<div id="ord-ind" class="text-left pt-3 px-3">-->
+          <div id="mkt-bdy" class="panel-bdy collapse show">
+            <div class="analy-hdr text-left pt-3 px-3">
+              <label class="custom-control custom-checkbox">
+                <input name="QuadrigaCX" type="checkbox" class="custom-control-input">
+                <span class="custom-control-indicator"></span>
+                <span class="custom-control-description">QuadrigaCX</span>
+              </label>
+              <label class="custom-control custom-checkbox">
+                <input name="Coinsquare" type="checkbox" class="custom-control-input">
+                <span class="custom-control-indicator"></span>
+                <span class="custom-control-description">Coinsquare</span>
+              </label>
+              <label class="custom-control custom-checkbox">
+                <input name="Kraken" type="checkbox" class="custom-control-input">
+                <span class="custom-control-indicator"></span>
+                <span class="custom-control-description">Kraken</span>
+              </label>
+              <label class="mr-4">
+                <select name="asset" aria-controls="chart" class="form-control form-control-sm">
+                  <option value="btc">BTC</option>
+                  <option value="eth">ETH</option>
+                </select>
+              </label>
+              <label class="mr-4">
+                <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
+                  <option value="1d">1 Day</option>
+                  <option value="7d">1 Week</option>
+                  <option value="1m">1 Month</option>
+                  <option value="3m">3 Months</option>
+                  <option value="6m">6 Months</option>
+                  <option value="ytd">YTD</option>
+                  <option value="1y">1 Year</option>
+                  <option value="all">All</option>
+                </select>
+              </label>
+            </div>
+            <div class="chart text-center p-0" style="width:100%; height:100%;" id="chart-contr"> 
+              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+              <!--Morris.js Chart-->
+            </div>
           </div>
         </div>
-      </div>
+        <div id="orders" style="" class="col-xl-12 slide-panel mb-4">
+          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+            <span><h3 class="mb-0">Bid vs Ask Volume</h3></span>
+            <span class="min-max pull-right" data-toggle="collapse" data-target="#ord-bdy" style="color:#74480a">
+              <i class="fa fa-window-minimize text-right"></i>
+            </span>
+          </div>
+          <div id="ord-bdy" class="panel-bdy collapse show">
+            <div class="chart text-center p-0" style="width:100%; height:100%;" id="ord-chrt-contr"> 
+              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+            </div>
+          </div>
+        </div>
+        <div id="orders2" style="" class="col-xl-12 slide-panel mb-4">
+          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+            <span><h3 class="mb-0">Bid vs Ask Price</h3></span>
+            <span class="min-max pull-right" data-toggle="collapse" data-target="#ord2-bdy" style="color:#74480a">
+              <i class="fa fa-window-minimize text-right"></i>
+            </span>
+          </div>
+          <div id="ord2-bdy" class="panel-bdy collapse show">
+            <div class="chart text-center p-0" style="width:100%; height:100%;" id="orders2-cont"> 
+              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+            </div>
+          </div>
+        </div>
+        <div id="orders3" style="" class="col-xl-12 slide-panel mb-4">
+          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+            <span><h3 class="mb-0">Bid vs Ask Inertia</h3></span>
+            <span class="min-max pull-right" data-toggle="collapse" data-target="#ord3-bdy" style="color:#74480a">
+              <i class="fa fa-window-minimize text-right"></i>
+            </span>
+          </div>
+          <div id="ord3-bdy" class="panel-bdy collapse show">
+            <div class="chart text-center p-0" style="width:100%; height:100%;" id="orders3-cont"> 
+              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+            </div>
+          </div>
+        </div>
+        <div id="orders4" style="" class="col-xl-12 slide-panel mb-4">
+          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+            <span><h3 class="mb-0">Buy Order Rate</h3></span>
+            <span class="min-max pull-right" data-toggle="collapse" data-target="#ord4-bdy" style="color:#74480a">
+              <i class="fa fa-window-minimize text-right"></i>
+            </span>
+          </div>
+          <div id="ord4-bdy" class="panel-bdy collapse show">
+            <div class="chart text-center p-0" style="width:100%; height:100%;" id="orders4-cont"> 
+              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+            </div>
+          </div>
+        </div>
+      </div><!--END ROW-->
 
     </div>
   </div>

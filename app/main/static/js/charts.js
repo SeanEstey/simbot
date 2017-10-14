@@ -1,5 +1,5 @@
 /* charts.js */
-X_AXIS_PERIODS = 144;
+X_AXIS_PERIODS = 250;
 DAY_MS = 86400000;
 TIME_LEN = {
     '1d':DAY_MS,
@@ -64,19 +64,16 @@ Chart.prototype.combineSeries = function() {
         var start = span[0] + (i*period_len);
         var end = start + period_len;
         var point = { 'time':start };
+
         for(var j=0; j<this.series.length; j++) {
-            var average = this.yValueAvg(
-              this.series[j]['data'],
-              this.series[j]['ykey'],
-              start,
-              end
-            );
-            point[this.series[j]['label']] = average;
+            var s = this.series[j];
+            var avg =  this.yValueAvg(s['data'], s['ykey'], start, end);
+            point[s['label']] = avg;
         }
         data.push(point);
     }
     this.fillDataGaps(data);
-    //console.log(data);
+    console.log(data);
     return data;
 }
 
@@ -109,15 +106,15 @@ Chart.prototype.querySeriesData = function(url, options, idx) {
             ex:options['ex'],
             asset:options['asset'],
             ykey:options['ykey'],
-            since:tspan[0],
-            until:tspan[1]},
+            since:tspan[0] + (3600*6), // convert to UTC
+            until:tspan[1] + (3600*6) // convert to UTC
+        },
         async:true,
         context: this,
         success:function(json){ 
             var data = JSON.parse(json);
             var _options = JSON.parse(JSON.stringify(options));
             _options['data'] = data;
-            //console.log(data);
             if(idx > this.series.length)
                 this.series.push(_options);
             else
@@ -141,6 +138,7 @@ Chart.prototype.getTimespan = function(lbl, units='ms') {
     else
         length = TIME_LEN[lbl];
     var start = length ? (t_now - length) : null;
+    
     return units == 'ms' ? [start, end] : [msToSec(start), msToSec(end)];
 }
 
@@ -158,9 +156,7 @@ Chart.prototype.yValueAvg = function(data, k, start, end) {
     if(y_values.length == 0)
         return null;
     else
-        return Number((y_values.reduce(function(a,b){
-            return a+b 
-        })/y_values.length).toFixed(0))
+        return Number((y_values.reduce(function(a,b){ return a+b }) / y_values.length)) 
 }
 
 //------------------------------------------------------------------------------
@@ -219,12 +215,13 @@ Chart.prototype.draw = function() {
     */
     this.erase();
     this.toggleSpinner(false);
-    this.morrisObj = Morris.Area({
+    var options = {
         element: this.contId,
         data: this.combineSeries(),
         xkey: 'time',
         ykeys: this.series.map(function(x){return x.label}),
         labels: this.series.map(function(x){return x.label}),
+        yLabelFormat: function(y) {return y = Number(y.toFixed(2))},
         ymin: 'auto',
         ymax: 'auto',
         smooth: false,
@@ -234,12 +231,18 @@ Chart.prototype.draw = function() {
         lineColors: ['#5cb85c','#136d8d', 'red'],
         fillOpacity: 0.3,
         dateFormat: function(x) { return new Date(x).toLocaleString()},
-        //hideHover: 'auto',
-        hideHover: 'always',
+        hideHover: 'auto',
+        //hideHover: 'always',
         //preUnits: '$',
         behaveLikeLine: true,
         resize: true
-    });
+    };
+
+    if(this.series[0]['type'] == 'line')
+        this.morrisObj = Morris.Line(options);
+    else if(this.series[0]['type'] == 'area')
+        this.morrisObj = Morris.Area(options);
+
     this.resize();
 }
 

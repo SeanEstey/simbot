@@ -79,7 +79,21 @@ def get_book_metrics(ex, book, metric, start, end):
             r['ask'] = float(r['summary']['ask'])
             del r['asks']
             del r['bids']
-
+    elif metric == 'ask_inertia':
+        for r in results:
+            r['ask_inertia'] = r['analysis']['ask_inertia']
+            del r['asks']
+            del r['bids']
+    elif metric == 'bid_inertia':
+        for r in results:
+            r['bid_inertia'] = r['analysis']['bid_inertia']
+            del r['asks']
+            del r['bids']
+    elif metric == 'buy_rate':
+        for r in results:
+            r['buy_rate'] = r['analysis']['buy_rate']
+            del r['asks']
+            del r['bids']
     # TRADE ANALYSIS
     """
     elif metric == 'v_traded':

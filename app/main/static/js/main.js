@@ -15,6 +15,7 @@ function initMain() {
     initSlidePanel('holdings');
     initSlidePanel('markets');
     initSlidePanel('orders');
+    initSlidePanel('orders2');
 
     showBotSummary();
     showExchTickers();
@@ -50,7 +51,7 @@ function initSocketIO() {
 function initEventHandlers() {
     $(window).resize(function(){
         // Adjust side frame height to 100%
-        $('#side_frm').height($(window).height() - $(".banner").height());
+        $('#side_frm').height($('#main_frm').height());// - $(".navbar").height());
     })
     $(window).resize();
 }
@@ -61,22 +62,49 @@ function showOrderBookCharts() {
     orderBookCharts.toggleSpinner(true);
     orderBookCharts.addSeries(
       '/books/get',
-      {ex:'QuadrigaCX', asset:'btc', label:'v_ask', ykey:'v_ask', time_lbl:'1d'}
+      {ex:'QuadrigaCX', asset:'btc', label:'v_ask', ykey:'v_ask', type:'line', decimals:3, time_lbl:'1d'}
     );
     orderBookCharts.addSeries(
       '/books/get',
-      {ex:'QuadrigaCX', asset:'btc', label:'v_bid', ykey:'v_bid', time_lbl:'1d'}
+      {ex:'QuadrigaCX', asset:'btc', label:'v_bid', ykey:'v_bid', type:'line', decimals:3, time_lbl:'1d'}
     );
-
+    orders2Chart = new Chart('orders2-cont', 'Area');
+    orders2Chart.toggleSpinner(true);
+    orders2Chart.addSeries(
+      '/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'bid', ykey:'bid', type:'area', decimals:2, time_lbl:'1d'}
+    );
+    orders2Chart.addSeries(
+      '/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'ask', ykey:'ask', type:'area', decimals:2, time_lbl:'1d'}
+    );
+    orders3Chart = new Chart('orders3-cont', 'Area');
+    orders3Chart.toggleSpinner(true);
+    orders3Chart.addSeries(
+      '/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'bid_inertia', ykey:'bid_inertia', type:'line', decimals:3, time_lbl:'1d'}
+    );
+    orders3Chart.addSeries(
+      '/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'ask_inertia', ykey:'ask_inertia', type:'line', decimals:3, time_lbl:'1d'}
+    );
+    orders4Chart = new Chart('orders4-cont', 'Area');
+    orders4Chart.toggleSpinner(true);
+    orders4Chart.addSeries(
+      '/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'buy_rate', ykey:'buy_rate', type:'area', decimals:2, time_lbl:'1d'}
+    );
     $(window).resize(function(){
         orderBookCharts.resize();
+        orders2Chart.resize();
+        orders3Chart.resize();
+        orders4Chart.resize();
     })
 }
 
 //------------------------------------------------------------------------------
 function showMarketChart() {
     marketChart = new Chart('chart-contr', 'Area');
-
     $('#markets input[type="checkbox"]').change(function() {
         var time_lbl = $('#markets select[name="time_lbl"]').val();
         var asset = $('#markets select[name="asset"]').val();
@@ -85,7 +113,7 @@ function showMarketChart() {
             marketChart.toggleSpinner(true);
             marketChart.addSeries(
               '/trades/get',
-              {ex:series_lbl, asset:asset, label:series_lbl, ykey:'price', time_lbl:time_lbl}
+              {ex:series_lbl, asset:asset, label:series_lbl, ykey:'price', type:'area', decimals:2, time_lbl:time_lbl}
             );
         }
         else if(!$(this)[0].checked) {
@@ -103,13 +131,11 @@ function showMarketChart() {
             var ex = marketChart.series[idx]['label'];
             marketChart.replaceSeries(
                 '/trades/get', 
-                {ex:ex, asset:asset, label:ex, asset:asset, ykey:'price', time_lbl:time_lbl},
+                {ex:ex, asset:asset, label:ex, asset:asset, ykey:'price', type:'area', decimals:2, time_lbl:time_lbl},
                 idx);
         }
     });
-
     $('input[name="QuadrigaCX"]').click();
-
     $(window).resize(function(){
         marketChart.resize();
     })
@@ -121,7 +147,6 @@ function showBotSummary() {
         null,
         function(response){
             var stats = JSON.parse(response);
-            //console.log(stats['accounts']);
             $('#earnings').html('$'+abbr(stats['earnings'],1));
             $('#cad_traded').html('$'+abbr(stats['cad_traded'],1));
             upd_val($('#btc'), num_format(stats['btc'],5));
@@ -223,22 +248,6 @@ function showHoldingsTable() {
             applyCustomization(TBL_ID);
             calcSimDuration();
         });
-}
-
-//------------------------------------------------------------------------------
-function showBookIndicators() {
-    api_call('/books/indicators', data=null, function(response) {
-        var data = JSON.parse(response);
-
-        for(var i=0; i<data.length; i++) {
-            delete data[i]['_id'];
-            delete data[i]['date'];
-        }
-
-        $('#ord-ind').jsonview(data);
-        $('span:contains("bids")').prev().click();
-        $('span:contains("asks")').prev().click();
-    });
 }
 
 //------------------------------------------------------------------------------
