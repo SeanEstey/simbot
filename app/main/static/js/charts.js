@@ -1,19 +1,4 @@
-/* charts.js
-    Reformat Series Objects to format:
-        {
-            "label": <str>,         // series label
-            "asset": <str>,         // btc, eth, etc
-            "timespan": {
-                "label": <str>      // 1d, 7d, 1m, 1y, etc
-                "start": <int>,     // timestamp in s
-                "end": <int>        // timestamp in s
-            },
-            "ykey": <str>,          // which key in data[]
-            "url": <str>,
-            "data": []
-        }
-*/
-
+/* charts.js */
 X_AXIS_PERIODS = 144;
 DAY_MS = 86400000;
 TIME_LEN = {
@@ -27,6 +12,9 @@ TIME_LEN = {
 
 //-----------------------------------------------------------------------------
 function Chart(contId, type) {
+    /* Morris.js chart supporting multi-series data, capable of dynamically
+     * modifying series and redrawing.
+     */
     this.MaxHeight = 400;
     this.SpinCycleDegrees = 360;
     this.SpinDuration = 3000;
@@ -46,6 +34,158 @@ function Chart(contId, type) {
     this.$spinner.width(this.cv.width);
     this.$spinner.height(this.cv.height);
     this.prevWidth = this.$cont.width();
+}
+
+Chart.prototype.addSeries = function(url, options) {
+    this.querySeriesData(url, options, this.series.length+1);
+}
+
+Chart.prototype.replaceSeries = function(url, options, idx) { 
+    this.querySeriesData(url, options, idx); 
+}
+
+Chart.prototype.rmvSeries = function(idx) {
+    this.series.splice(idx,1);
+    this.draw();
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.combineSeries = function() {
+    /* Build 1D array for rendering chart.
+    */
+    if(this.series.length < 1)
+        return;
+    var span = this.getTimespan(this.series[0]['time_lbl'], units='ms');
+    var period_len = (span[1]-span[0]) / X_AXIS_PERIODS; 
+    var data = [];
+
+    // Create datapoints by combining series data for each time period.
+    for(var i=0; i<X_AXIS_PERIODS; i++) {
+        var start = span[0] + (i*period_len);
+        var end = start + period_len;
+        var point = { 'time':start };
+        for(var j=0; j<this.series.length; j++) {
+            var average = this.yValueAvg(
+              this.series[j]['data'],
+              this.series[j]['ykey'],
+              start,
+              end
+            );
+            point[this.series[j]['label']] = average;
+        }
+        data.push(point);
+    }
+    this.fillDataGaps(data);
+    //console.log(data);
+    return data;
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.getSeriesIdx = function(series_lbl=false, selected_by=false) {
+    var k = v = null;
+    if(typeof series_lbl !== 'undefined') {
+        k = 'label';
+        v = series_lbl;
+    }
+    else if(typeof selected_by !== 'undefined') {
+        k = 'selected_by';
+        v = selected_by;
+    }
+    for(var idx=0; idx<this.series.length; idx++) {
+        if(this.series[idx][k] == v) return idx;
+    }
+    return -1;
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.querySeriesData = function(url, options, idx) {
+    /* POST request returning series data  */
+    var data = null;
+    var tspan = this.getTimespan(options['time_lbl'], units='s');
+    $.ajax({
+        type: 'POST',
+        url: BASE_URL + url,
+        data:{
+            ex:options['ex'],
+            asset:options['asset'],
+            ykey:options['ykey'],
+            since:tspan[0],
+            until:tspan[1]},
+        async:true,
+        context: this,
+        success:function(json){ 
+            var data = JSON.parse(json);
+            var _options = JSON.parse(JSON.stringify(options));
+            _options['data'] = data;
+            //console.log(data);
+            if(idx > this.series.length)
+                this.series.push(_options);
+            else
+                this.series[idx] = _options;
+            this.draw();
+        }
+    });
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.getTimespan = function(lbl, units='ms') {
+    /* @lbl: series duration label ('1d','7d','6m',etc)
+     * @units: result format. 'ms' or 's'
+     * Returns: array of ints [t_start, t_end]
+    */
+    var length = null;
+    var today = new Date();
+    var end = t_now = today.getTime();
+    if(lbl == 'ytd')
+        length = DAY_MS * (today.getWeek()*7 + today.getDay());
+    else
+        length = TIME_LEN[lbl];
+    var start = length ? (t_now - length) : null;
+    return units == 'ms' ? [start, end] : [msToSec(start), msToSec(end)];
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.yValueAvg = function(data, k, start, end) {
+    /* Timeseries average y-val.
+    */
+    var y_values = data.filter(
+        function(elem, j, data) {
+            var d = elem['date']['$date'];
+            if(d >= start && d < end) return elem;
+        }
+    ).map(function(x) { return x[k] });
+
+    if(y_values.length == 0)
+        return null;
+    else
+        return Number((y_values.reduce(function(a,b){
+            return a+b 
+        })/y_values.length).toFixed(0))
+}
+
+//------------------------------------------------------------------------------
+Chart.prototype.fillDataGaps = function(data) {
+    /* Pad any null values in series data w/ prev series value.
+    */
+    for(var i=0; i<data.length; i++) {
+        var p = data[i];
+        for(var k in p) {
+            if(p[k]) continue;
+
+            for(var j=i; j>=0; j--) {
+                if(data[j][k]) {
+                    p[k] = data[j][k];
+                    break;
+                }
+            }
+            for(var j=i; j<data.length; j++) {
+                if(data[j][k]) {
+                    p[k] = data[j][k];
+                    break;
+                }
+            }
+        }
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -94,11 +234,13 @@ Chart.prototype.draw = function() {
         lineColors: ['#5cb85c','#136d8d', 'red'],
         fillOpacity: 0.3,
         dateFormat: function(x) { return new Date(x).toLocaleString()},
-        hideHover: 'auto',
+        //hideHover: 'auto',
+        hideHover: 'always',
         //preUnits: '$',
         behaveLikeLine: true,
         resize: true
     });
+    this.resize();
 }
 
 //------------------------------------------------------------------------------
@@ -125,7 +267,7 @@ Chart.prototype.toggleSpinner = function(bShow) {
     }
 
     if(bShow) {
-        //$('#markets .analy-hdr').hide();
+        this.erase();
         this.$cont.find('svg').remove();
         this.$cont.find('.morris-hover').remove();
         this.$spinner.getLayer('loader').visible = true;
@@ -133,7 +275,6 @@ Chart.prototype.toggleSpinner = function(bShow) {
         this.rotateSpinner();
     }
     else {
-        //$('#markets .analy-hdr').show();
         this.$spinner.getLayer('loader').visible = false;
         this.$spinner.hide();
     }
@@ -149,157 +290,5 @@ Chart.prototype.rotateSpinner = function() {
             this.SpinDuration,
             this.rotateSpinner
         );
-    }
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.combineSeries = function() {
-        marketChart.resize();
-    if(this.series.length < 1)
-        return;
-
-    var span = this.getTimespan(this.series[0]['time_lbl'], units='ms');
-    var period_len = (span[1]-span[0]) / X_AXIS_PERIODS; 
-    var data = [];
-
-    // Create datapoints by combining series data for each time period.
-    for(var i=0; i<X_AXIS_PERIODS; i++) {
-        var start = span[0] + (i*period_len);
-        var end = start + period_len;
-        var point = { 'time':start };
-        for(var j=0; j<this.series.length; j++) {
-            var average = this.yValueAvg(this.series[j]['data'], this.series[j]['ykey'], start, end);
-            point[this.series[j]['label']] = average;
-        }
-        data.push(point);
-    }
-    this.fillDataGaps(data);
-    //console.log(data);
-    return data;
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.getSeriesIdx = function(series_lbl=false, selected_by=false) {
-    var k = v = null;
-    if(typeof series_lbl !== 'undefined') {
-        k = 'label';
-        v = series_lbl;
-    }
-    else if(typeof selected_by !== 'undefined') {
-        k = 'selected_by';
-        v = selected_by;
-    }
-    for(var idx=0; idx<this.series.length; idx++) {
-        if(this.series[idx][k] == v) return idx;
-    }
-    return -1;
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.querySeriesData = function(url, series_lbl, ex, asset, ykey, time_lbl, idx) {
-    /* POST request returning series data  */
-
-    var data = null;
-    var tspan = this.getTimespan(time_lbl, units='s');
-
-    $.ajax({
-        type: 'POST',
-        url: BASE_URL + url,
-        data:{
-            ex:ex,
-            asset:asset,
-            ykey:ykey,
-            since:tspan[0],
-            until:tspan[1]},
-        async:true,
-        context: this,
-        success:function(json){ 
-            var data = JSON.parse(json);
-            //console.log(data);
-
-            if(idx > this.series.length)
-                this.series.push({label:series_lbl, ex:ex, asset:asset, ykey:ykey, time_lbl:time_lbl, data:data});
-            else
-                this.series[idx] = {label:series_lbl, ex:ex, asset:asset, ykey:ykey, time_lbl:time_lbl, data:data};
-
-            this.draw();
-        }
-    });
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.rmvSeries = function(idx) {
-    this.series.splice(idx,1);
-    this.draw();
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.addSeries = function(series_lbl, ex, asset, ykey, time_lbl, url) {
-    this.querySeriesData(url, series_lbl, ex, asset, ykey, time_lbl, this.series.length+1);
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.replaceSeries = function(idx, series_lbl, ex, asset, ykey, time_lbl, url) {
-    this.querySeriesData(url, series_lbl, ex, asset, ykey, time_lbl, idx);
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.getTimespan = function(lbl, units='ms') {
-    /* @lbl: series duration label ('1d','7d','6m',etc)
-     * @units: result format. 'ms' or 's'
-     * Returns: array of ints [t_start, t_end]
-    */
-    var length = null;
-    var today = new Date();
-    var end = t_now = today.getTime();
-    if(lbl == 'ytd')
-        length = DAY_MS * (today.getWeek()*7 + today.getDay());
-    else
-        length = TIME_LEN[lbl];
-    var start = length ? (t_now - length) : null;
-    return units == 'ms' ? [start, end] : [msToSec(start), msToSec(end)];
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.yValueAvg = function(data, k, start, end) {
-    /* Price average within time period
-    */
-    var y_values = data.filter(
-        function(elem, j, data) {
-            var d = elem['date']['$date'];
-            if(d >= start && d < end) return elem;
-        }
-    ).map(function(x) { return x[k] });
-
-    if(y_values.length == 0)
-        return null;
-    else
-        return Number((y_values.reduce(function(a,b){
-            return a+b 
-        })/y_values.length).toFixed(0))
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.fillDataGaps = function(datapoints) {
-    for(var i=0; i<datapoints.length; i++) {
-        var dp = datapoints[i];
-        for(var k in datapoints[i]) {
-            if(!datapoints[i][k]) { 
-                var last = null;
-                for(var j=i; j>=0; j--) {
-                    if(datapoints[j][k])
-                        last = datapoints[j][k];
-                }
-
-                if(last)
-                    datapoints[i][k] = last;
-                else {
-                    for(var j=i; j<datapoints.length; j++) {
-                        if(datapoints[j][k])
-                            datapoints[i][k] = datapoints[j][k];
-                    }
-                }
-            }
-        }
     }
 }

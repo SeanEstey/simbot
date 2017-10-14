@@ -59,8 +59,14 @@ function initEventHandlers() {
 function showOrderBookCharts() {
     orderBookCharts = new Chart('ord-chrt-contr', 'Area');
     orderBookCharts.toggleSpinner(true);
-    orderBookCharts.addSeries('v_ask', 'QuadrigaCX', 'btc', 'v_ask', '1d', '/books/get');
-    orderBookCharts.addSeries('v_bid', 'QuadrigaCX', 'btc', 'v_bid', '1d', '/books/get');
+    orderBookCharts.addSeries(
+      '/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'v_ask', ykey:'v_ask', time_lbl:'1d'}
+    );
+    orderBookCharts.addSeries(
+      '/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'v_bid', ykey:'v_bid', time_lbl:'1d'}
+    );
 
     $(window).resize(function(){
         orderBookCharts.resize();
@@ -77,7 +83,10 @@ function showMarketChart() {
         var series_lbl = $(this).prop('name');
         if($(this)[0].checked) {
             marketChart.toggleSpinner(true);
-            marketChart.addSeries(series_lbl, series_lbl, asset, 'price', time_lbl, '/trades/get');
+            marketChart.addSeries(
+              '/trades/get',
+              {ex:series_lbl, asset:asset, label:series_lbl, ykey:'price', time_lbl:time_lbl}
+            );
         }
         else if(!$(this)[0].checked) {
             marketChart.toggleSpinner(true);
@@ -91,7 +100,11 @@ function showMarketChart() {
         var asset = $('#markets select[name="asset"]').val();
 
         for(var idx=0; idx<marketChart.series.length; idx++) {
-            marketChart.replaceSeries(idx, marketChart.series[idx]['label'], marketChart.series[idx]['label'], asset, 'price', time_lbl, '/trades/get');
+            var ex = marketChart.series[idx]['label'];
+            marketChart.replaceSeries(
+                '/trades/get', 
+                {ex:ex, asset:asset, label:ex, asset:asset, ykey:'price', time_lbl:time_lbl},
+                idx);
         }
     });
 
