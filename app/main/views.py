@@ -8,6 +8,9 @@ from . import main # Blueprint
 #-------------------------------------------------------------------------------
 @main.route('/')
 def index():
-
-
     return render_template('index.html')
+
+#-------------------------------------------------------------------------------
+@main.route('/analysis')
+def _analysis():
+    return render_template('analysis.html')

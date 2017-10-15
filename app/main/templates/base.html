@@ -13,6 +13,37 @@
     {% endblock %}
   </head>
   <body>
+    <div id="navs" class="container-fluid p-0">
+      <nav id="main-nav" class="navbar navbar-toggleable-md navbar-light justify-content-between pt-2" style="display:flex; border-bottom: 1px solid rgba(0,0,0,0.13);">
+        <button id="menu-toggle-btn" class="navbar-toggler collapsed" style="display:none;" type="button"
+          data-toggle="collapse" data-target="#invisi-nav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="d-flex">
+          <a id="logo_a" class="navbar-brand text-center my-auto pb-0 pt-0" style="position:relative; left:0px;" href="/">
+            <div class="d-flex">
+              <img class="mr-2" style="height:32px; width:32px" src="{{url_for("static", filename="main/images/simbot-icon.jpg")}}">
+              <h5 class="mt-2 logo">SIMBOT</h5>
+            </div>
+          </a>
+          <ul id="main-menu" class="navbar-nav justify-content-center" style="flex-direction: row; margin: 0rem 0.5rem;">
+            <li class="d-flex nav-item">
+              <a class="nav-link d-flex pb-2" style="color:#136d8d" href="/">
+                <i class="fa fa-flask fa-2x mr-1"></i>
+                <span class="my-auto">Simulations</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link d-flex" style="color:#136d8d" href="/analysis">
+              <i class="fa fa-area-chart fa-2x mr-1"></i>
+              <span class="my-auto">Analysis</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+      </nav>
+    </div>
     <div id="content" class="container-fluid mx-auto m-0 p-0">
       <!--Individual page content-->
       {% block content %}
