@@ -1,5 +1,5 @@
 /* charts.js */
-X_AXIS_PERIODS = 250;
+X_AXIS_PERIODS = 144;
 DAY_MS = 86400000;
 TIME_LEN = {
     '1d':DAY_MS,

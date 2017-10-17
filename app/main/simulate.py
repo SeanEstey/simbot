@@ -8,6 +8,7 @@ from bson import ObjectId as oid
 from . import books
 from app.main.sms import compose
 from app.main.socketio import smart_emit
+from app.main import indicators
 log = logging.getLogger(__name__)
 
 #---------------------------------------------------------------
@@ -170,7 +171,7 @@ class SimBot():
         pass
 
     #---------------------------------------------------------------
-    def eval_bids(self):
+    def eval_sell_positions(self):
         """Evaluate each open holding, sell on margin criteria
         """
         _holdings = self.holdings(status='open')
@@ -185,7 +186,7 @@ class SimBot():
                 smart_emit('updateBot', None)
 
     #---------------------------------------------------------------
-    def eval_asks(self):
+    def eval_buy_positions(self):
         """TODO: if market average has moved and no buys for > 1 hour,
         make small buy to reset last buy price
         """
@@ -197,12 +198,22 @@ class SimBot():
             if len(holdings) == 0:
                 BUY = True
             else:
-                # Get recent holding BUY price.
-                # Buy order if ask price fallen below margin
+                # Buy Indicator A: price dropped
                 recent_trade = holdings[-1]['trades'][0]
                 buy_margin = round(ask['price'] - recent_trade['price'],2)
                 if buy_margin <= self.rules['buy_margin']:
                     BUY = True
+
+                # Buy Indicator B: low ask inertia
+                book_ind = indicators.order_book(ex['name'], ex['book'])
+                if book_ind:
+                    if book_ind['ask_inertia'] < 15:
+                        log.info('ask_inertia=%s, book=%s, ex=%s. buying',
+                        book_ind['ask_inertia'], ex['book'], ex['name'])
+                        BUY = True
+                    elif book_ind['ask_inertia'] > 15:
+                        log.debug('ask_inertia=%s, book=%s, ex=%s. too high for buy',
+                        book_ind['ask_inertia'], ex['book'], ex['name'])
 
             if BUY:
                 holding = self.buy_market_order(

@@ -7,10 +7,14 @@ from logging import getLogger
 log = getLogger(__name__)
 
 #---------------------------------------------------------------
-def analyze_order_book(orders):
+def order_book(ex, book):
+    orders = g.db['pub_books'].find({'ex':ex, 'book':book}).sort('date',-1).limit(1)
+    if orders.count() < 1:
+        return False
+    orders = list(orders)[0]
+
     # Total order book volumes
     v_ask = v_bid = 0
-
     # Volume required to shift price by >= 1%
     ask_delta = [float(orders['asks'][0][0]) * 1.01, None]
     bid_delta = [float(orders['bids'][0][0]) * 0.99, None]
@@ -25,26 +29,31 @@ def analyze_order_book(orders):
         if ask_delta[1] is None and float(a[0]) >= ask_delta[0]:
             ask_delta[1] = v_ask
 
-    g.db['pub_books'].insert_one({
-        'ex':'QuadrigaCX',
-        'book':book,
-        'date':datetime.utcnow(),
-        'summary':summary,
-        'bids':orders['bids'],
-        'asks':orders['asks'],
-
-        # Static book analysis
-        'analysis': {
-            'v_bid':v_bid,
-            'v_ask':v_ask,
-            'v_ratio':round(v_bid/v_ask,2),
-            'p_ask_sens':ask_delta[1], # Req order volume to move price up 1%
-            'p_bid_sens':bid_delta[1] # Req order volume to move price down 1%
-        }
-    })
+    return {
+        'v_bid':v_bid,
+        'v_ask':v_ask,
+        'v_ratio':round(v_bid/v_ask,2),
+        'ask_inertia':round(ask_delta[1],5),
+        'bid_inertia':round(bid_delta[1],5)
+    }
 
 #---------------------------------------------------------------
-def get_book_metrics(ex, book, metric, start, end):
+def calc_trade_vol(ex, book, start, end):
+    """Calculate buy/sell trade volume and n_buys/n_sells during time period.
+    """
+    aggr = g.db['pub_trades'].aggregate([
+        {'$match': {
+            'exchange':ex,
+            'currency':book[0:3],
+            'date':{'$gte':start, '$lte':end}
+        }},
+        {'$group':{'_id':'$side', 'count':{'$sum':1}, 'volume':{'$sum':'volume'}}}
+    ])
+    return dumps(list(aggr))
+
+#---------------------------------------------------------------
+def get_trade_metrics(ex, book, metric, start, end):
+    t1 = Timer()
     results = list(
         g.db['pub_books'].find({
             'ex':ex,
@@ -52,8 +61,32 @@ def get_book_metrics(ex, book, metric, start, end):
             'date':{'$gte':start, '$lte':end}
         }).sort('date',1)
     )
-    log.debug('book_metrics, ex=%s, book=%s, key=%s, start=%s, end=%s, count=%s',
-        ex, book, metric, start, end, len(results))
+
+    if metric == 'v_bought' or metric == 'v_sold':
+        for r in results:
+            r['v_bought'] = r['analysis']['v_bought']
+            r['v_sold'] = r['analysis']['v_sold']
+            r['n_buys'] = r['analysis']['n_buys']
+            r['n_sells'] = r['analysis']['n_sells']
+            del r['asks']
+            del r['bids']
+
+    _json = dumps(results)
+    log.debug('trade_metric=%s [%ss]', metric, t1.clock(t='s'))
+    return _json
+
+#---------------------------------------------------------------
+def get_book_metrics(ex, book, metric, start, end):
+    t1 = Timer()
+    results = list(
+        g.db['pub_books'].find({
+            'ex':ex,
+            'book':book,
+            'date':{'$gte':start, '$lte':end}
+        }).sort('date',1)
+    )
+    #log.debug('book_metrics, ex=%s, book=%s, key=%s, start=%s, end=%s, count=%s',
+    #    ex, book, metric, start, end, len(results))
 
     if metric == 'v_ask':
         for r in results:
@@ -94,20 +127,7 @@ def get_book_metrics(ex, book, metric, start, end):
             r['buy_rate'] = r['analysis']['buy_rate']
             del r['asks']
             del r['bids']
-    # TRADE ANALYSIS
-    """
-    elif metric == 'v_traded':
-        for r in results:
-            r['v_traded'] = 0
-            for bid in r['bids']:
-                r['v_traded'] += float(bid[1])
-            for ask in r['asks']:
-                r['v_traded'] += float(ask[1])
-            del r['asks']
-            del r['bids']
-    elif metric == 'v_bought':
-        for r in results:
-            r['v_bought'] = 0
-    """
 
-    return dumps(results)
+    _json = dumps(results)
+    #log.debug('book_metric=%s [%s]', metric, t1.clock(t='ms'))
+    return _json

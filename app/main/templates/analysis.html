@@ -16,9 +16,51 @@
 {% endblock %}
 {% block content %}
   <div class="row no-gutters">
-    <div id="orders" class="slide-panel col-xl-5 my-4 mx-auto">
+    <div id="market" class="slide-panel col-xl-5 my-4 mx-auto">
       <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-        <span><h3 class="mb-0">Bid vs Ask Volume</h3></span>
+        <span><h3 class="mb-0">Market</h3></span>
+        <span class="min-max pull-right" data-toggle="collapse" data-target="#mkt-bdy" style="color:#74480a">
+          <i class="fa fa-window-minimize text-right"></i>
+        </span>
+      </div>
+      <div id="mkt-bdy" class="panel-bdy collapse show">
+        <div class="chart text-center p-0" style="width:100%; height:100%;" id="mkt-cont"> 
+          <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div id="orders5" class="slide-panel col-xl-5 my-4 mx-auto">
+      <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+        <span><h3 class="mb-0">Trade Volume</h3></span>
+        <span class="min-max pull-right" data-toggle="collapse" data-target="#ord5-bdy" style="color:#74480a">
+          <i class="fa fa-window-minimize text-right"></i>
+        </span>
+      </div>
+      <div id="ord5-bdy" class="panel-bdy collapse show">
+        <div class="chart text-center p-0" style="width:100%; height:100%;" id="orders5-cont"> 
+          <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div id="buy_rate" class="slide-panel col-xl-5 mb-4 mx-auto">
+      <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+        <span><h3 class="mb-0">Bid Execution Rate</h3></span>
+        <span class="min-max pull-right" data-toggle="collapse" data-target="#buy_rate-bdy" style="color:#74480a">
+          <i class="fa fa-window-minimize text-right"></i>
+        </span>
+      </div>
+      <div id="buy_rate-bdy" class="panel-bdy collapse show">
+        <div class="chart text-center p-0" style="width:100%; height:100%;" id="buy_rate-cont"> 
+          <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div id="orders" class="slide-panel col-xl-5 mb-4 mx-auto">
+      <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+        <span><h3 class="mb-0">Order Book Volume</h3></span>
         <span class="min-max pull-right" data-toggle="collapse" data-target="#ord-bdy" style="color:#74480a">
           <i class="fa fa-window-minimize text-right"></i>
         </span>
@@ -29,7 +71,7 @@
         </div>
       </div>
     </div>
-    <div id="orders2" class="slide-panel col-xl-5 my-4 mx-auto">
+    <div id="orders2" class="slide-panel col-xl-5 mb-4 mx-auto">
       <div class="panel-hdr d-flex justify-content-between py-2 px-3">
         <span><h3 class="mb-0">Bid vs Ask Price</h3></span>
         <span class="min-max pull-right" data-toggle="collapse" data-target="#ord2-bdy" style="color:#74480a">
@@ -44,7 +86,7 @@
     </div>
     <div id="orders3" class="slide-panel col-xl-5 mb-4 mx-auto">
       <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-        <span><h3 class="mb-0">Bid vs Ask Inertia</h3></span>
+        <span><h3 class="mb-0">Order Book Inertia</h3></span>
         <span class="min-max pull-right" data-toggle="collapse" data-target="#ord3-bdy" style="color:#74480a">
           <i class="fa fa-window-minimize text-right"></i>
         </span>
@@ -55,18 +97,8 @@
         </div>
       </div>
     </div>
-    <div id="orders4" class="slide-panel col-xl-5 mb-4 mx-auto">
-      <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-        <span><h3 class="mb-0">Buy Order Rate</h3></span>
-        <span class="min-max pull-right" data-toggle="collapse" data-target="#ord4-bdy" style="color:#74480a">
-          <i class="fa fa-window-minimize text-right"></i>
-        </span>
-      </div>
-      <div id="ord4-bdy" class="panel-bdy collapse show">
-        <div class="chart text-center p-0" style="width:100%; height:100%;" id="orders4-cont"> 
-          <canvas id="spinner" style="width:1198px; height:100%"></canvas>
-        </div>
-      </div>
-    </div>
+
+
+
   </div>
 {% endblock %}

@@ -15,8 +15,8 @@ from app.main.socketio import smart_emit
 @celery.task(bind=True)
 def update_bots(self, **rest):
     gary = SimBot('Terry')
-    gary.eval_bids()
-    gary.eval_asks()
+    gary.eval_buy_positions()
+    gary.eval_sell_positions()
     gary.eval_arbitrage()
 
 #-------------------------------------------------------------------------------
@@ -81,7 +81,7 @@ def update_exchanges(self, **rest):
             g.db['pub_books'].insert_one({
                 'ex':'QuadrigaCX',
                 'book':book,
-                'date':datetime.utcnow(),
+                'date':datetime.fromtimestamp(int(orders['timestamp'])+(3600*6)),
                 'summary':summary,
                 'bids':orders['bids'],
                 'asks':orders['asks'],

@@ -76,6 +76,56 @@
       </div>
       <!--Main Frame-->
       <div id="main_frm" class="col-12 col-xl-10 p-5">
+        <!--Markets Panel-->
+        <div id="markets" class="slide-panel mb-4">
+          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+            <span><h3 class="mb-0">Markets</h3></span>
+            <span class="min-max pull-right" data-toggle="collapse" data-target="#mkt-bdy" style="color:#74480a">
+              <i class="fa fa-window-minimize text-right"></i>
+            </span>
+          </div>
+          <div id="mkt-bdy" class="panel-bdy collapse show">
+            <div class="analy-hdr text-left pt-3 px-3">
+              <label class="custom-control custom-checkbox">
+                <input name="QuadrigaCX" type="checkbox" class="custom-control-input">
+                <span class="custom-control-indicator"></span>
+                <span class="custom-control-description">QuadrigaCX</span>
+              </label>
+              <label class="custom-control custom-checkbox">
+                <input name="Coinsquare" type="checkbox" class="custom-control-input">
+                <span class="custom-control-indicator"></span>
+                <span class="custom-control-description">Coinsquare</span>
+              </label>
+              <label class="custom-control custom-checkbox">
+                <input name="Kraken" type="checkbox" class="custom-control-input">
+                <span class="custom-control-indicator"></span>
+                <span class="custom-control-description">Kraken</span>
+              </label>
+              <label class="mr-4">
+                <select name="asset" aria-controls="chart" class="form-control form-control-sm">
+                  <option value="btc">BTC</option>
+                  <option value="eth">ETH</option>
+                </select>
+              </label>
+              <label class="mr-4">
+                <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
+                  <option value="1d">1 Day</option>
+                  <option value="7d">1 Week</option>
+                  <option value="1m">1 Month</option>
+                  <option value="3m">3 Months</option>
+                  <option value="6m">6 Months</option>
+                  <option value="ytd">YTD</option>
+                  <option value="1y">1 Year</option>
+                  <option value="all">All</option>
+                </select>
+              </label>
+            </div>
+            <div class="chart text-center p-0" style="width:100%; height:100%;" id="chart-contr"> 
+              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+              <!--Morris.js Chart-->
+            </div>
+          </div>
+        </div>
         <!--Holdings Panel-->
         <div id="holdings" class="slide-panel mb-4">
           <div class="panel-hdr d-flex justify-content-between py-2 px-3">
@@ -130,56 +180,7 @@
             </div>
           </div>
         </div>
-        <!--Markets Panel-->
-        <div id="markets" class="slide-panel mb-4">
-          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-            <span><h3 class="mb-0">Markets</h3></span>
-            <span class="min-max pull-right" data-toggle="collapse" data-target="#mkt-bdy" style="color:#74480a">
-              <i class="fa fa-window-minimize text-right"></i>
-            </span>
-          </div>
-          <div id="mkt-bdy" class="panel-bdy collapse show">
-            <div class="analy-hdr text-left pt-3 px-3">
-              <label class="custom-control custom-checkbox">
-                <input name="QuadrigaCX" type="checkbox" class="custom-control-input">
-                <span class="custom-control-indicator"></span>
-                <span class="custom-control-description">QuadrigaCX</span>
-              </label>
-              <label class="custom-control custom-checkbox">
-                <input name="Coinsquare" type="checkbox" class="custom-control-input">
-                <span class="custom-control-indicator"></span>
-                <span class="custom-control-description">Coinsquare</span>
-              </label>
-              <label class="custom-control custom-checkbox">
-                <input name="Kraken" type="checkbox" class="custom-control-input">
-                <span class="custom-control-indicator"></span>
-                <span class="custom-control-description">Kraken</span>
-              </label>
-              <label class="mr-4">
-                <select name="asset" aria-controls="chart" class="form-control form-control-sm">
-                  <option value="btc">BTC</option>
-                  <option value="eth">ETH</option>
-                </select>
-              </label>
-              <label class="mr-4">
-                <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
-                  <option value="1d">1 Day</option>
-                  <option value="7d">1 Week</option>
-                  <option value="1m">1 Month</option>
-                  <option value="3m">3 Months</option>
-                  <option value="6m">6 Months</option>
-                  <option value="ytd">YTD</option>
-                  <option value="1y">1 Year</option>
-                  <option value="all">All</option>
-                </select>
-              </label>
-            </div>
-            <div class="chart text-center p-0" style="width:100%; height:100%;" id="chart-contr"> 
-              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
-              <!--Morris.js Chart-->
-            </div>
-          </div>
-        </div>
+
       </div>
     </div>
   {% endblock %}

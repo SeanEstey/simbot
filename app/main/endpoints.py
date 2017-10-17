@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 from . import main
 from . import quadcx, coinsquare
 from .simulate import SimBot
-from .indicators import get_book_metrics
+from .indicators import get_book_metrics, get_trade_metrics
 
 @main.route('/stats/get', methods=['POST'])
 def get_earnings():
@@ -56,36 +56,25 @@ def _update_books():
         coinsquare.update('CAD', 'BTC')
     return 'OK'
 
-@main.route('/books/indicators', methods=['POST'])
-def _indicators():
-    """Return time-series for order book and trade
-    indicators for rendering to chart.
 
-    # Run aggregate query for pub_books
-    book_analysis = g.db['pub_books'].aggregate([
-        {'$group':
-            {'_id':'$ex', 'book':'$book', 'bids':
-            'v_bid':{'$sum':'$bids.$1'}
-        'v_ask':{'$sum':'$asks.$1'}
-        'v_ratio':round(v_bid/v_ask,2),
-        'p_ask_sens':{'$min':..
-        ])
+@main.route('/indicators/book', methods=['POST'])
+def _get_book_ind():
+    get = request.form.get
+    return get_book_metrics(
+        get('ex'),
+        '%s_cad' % get('asset'),
+        get('ykey'),
+        datetime.fromtimestamp(int(get('since'))),
+        datetime.fromtimestamp(int(get('until')))
+    )
 
-    trade_analysis = g.db['pub_trades'].aggregate([
-        'n_sell_mkt_orders':n_sell,
-        'n_buy_mkt_orders':n_buy,
-        'buy_ratio': round(n_buy/(n_buy+n_sell),2)
-
-            {'$group':{'_id':'$book', 'name':'$ex', 'min_ask':{'$min':'$ask'}, 'max_bid':{'$max':'$bid'}}}])
-    ])
-    """
-
-    return dumps([
-        list(g.db['pub_books'].find(
-            {'ex':'QuadrigaCX', 'book':'btc_cad'}
-        ).sort('$natural',-1).limit(1))[0]
-        ,
-        list(g.db['pub_books'].find(
-            {'ex':'QuadrigaCX', 'book':'eth_cad'}
-        ).sort('$natural',-1).limit(1))[0]
-    ])
+@main.route('/indicators/trade', methods=['POST'])
+def _get_ind():
+    get = request.form.get
+    return get_trade_metrics(
+        get('ex'),
+        '%s_cad' % get('asset'),
+        get('ykey'),
+        datetime.fromtimestamp(int(get('since'))),
+        datetime.fromtimestamp(int(get('until')))
+    )
