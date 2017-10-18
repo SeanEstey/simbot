@@ -1,14 +1,24 @@
 # app.main.endpoints
 from datetime import datetime, timedelta
+from dateutil.parser import parse
 from bson.json_util import dumps
 import logging, pprint
 from flask import g, request
-
 log = logging.getLogger(__name__)
 from . import main
 from . import quadcx, coinsquare
 from .simulate import SimBot
-from .indicators import get_book_metrics, get_trade_metrics
+
+@main.route('/ind/test', methods=['GET'])
+def _test_ind():
+    from app.main.indicators import build_series
+    utcnow = datetime.now()+timedelta(hours=6)
+    build_series(
+        'QuadrigaCX',
+        'btc_cad',
+        utcnow - timedelta(hours=24),
+        utcnow)
+    return 'ok'
 
 @main.route('/stats/get', methods=['POST'])
 def get_earnings():
@@ -38,43 +48,9 @@ def get_trades():
     )
     return dumps(trades)
 
-@main.route('/books/get', methods=['POST'])
-def _get_books():
-    get = request.form.get
-    return get_book_metrics(
-        get('ex'),
-        '%s_cad' % get('asset'),
-        get('ykey'),
-        datetime.fromtimestamp(int(get('since'))),
-        datetime.fromtimestamp(int(get('until')))
-    )
-
 @main.route('/books/update', methods=['POST'])
 def _update_books():
     exchange = request.form.get('exchange')
     if exchange == 'Coinsquare':
         coinsquare.update('CAD', 'BTC')
     return 'OK'
-
-
-@main.route('/indicators/book', methods=['POST'])
-def _get_book_ind():
-    get = request.form.get
-    return get_book_metrics(
-        get('ex'),
-        '%s_cad' % get('asset'),
-        get('ykey'),
-        datetime.fromtimestamp(int(get('since'))),
-        datetime.fromtimestamp(int(get('until')))
-    )
-
-@main.route('/indicators/trade', methods=['POST'])
-def _get_ind():
-    get = request.form.get
-    return get_trade_metrics(
-        get('ex'),
-        '%s_cad' % get('asset'),
-        get('ykey'),
-        datetime.fromtimestamp(int(get('since'))),
-        datetime.fromtimestamp(int(get('until')))
-    )

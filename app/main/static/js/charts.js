@@ -1,13 +1,21 @@
 /* charts.js */
-X_AXIS_PERIODS = 144;
-DAY_MS = 86400000;
+X_AXIS_PERIODS = 144; // DELETE ME
+MS_10_MIN = 600000;
+MS_1_HR = 3600000;
+MS_1_DAY = 86400000;
+PERIODS = {
+    '1d': {n_periods:144, duration:MS_10_MIN},
+    '7d': {n_periods:168, duration:MS_1_HR},
+    '1m': {n_periods:240, duration:MS_1_HR*3},
+    '3m': {n_periods:180, duration:MS_1_HR*12}
+};
 TIME_LEN = {
-    '1d':DAY_MS,
-    '7d':DAY_MS*7,
-    '1m':DAY_MS*30,
-    '3m':DAY_MS*90,
-    '6m':DAY_MS*180,
-    '1y':DAY_MS*360
+    '1d':MS_1_DAY,
+    '7d':MS_1_DAY*7,
+    '1m':MS_1_DAY*30,
+    '3m':MS_1_DAY*90,
+    '6m':MS_1_DAY*180,
+    '1y':MS_1_DAY*360
 };
 
 //-----------------------------------------------------------------------------
@@ -34,6 +42,9 @@ function Chart(contId, type) {
     this.$spinner.width(this.cv.width);
     this.$spinner.height(this.cv.height);
     this.prevWidth = this.$cont.width();
+
+    this.toggleSpinner(true);
+    //$(window).resize(function(){this.resize()});
 }
 
 Chart.prototype.addSeries = function(url, options) {
@@ -134,7 +145,7 @@ Chart.prototype.getTimespan = function(lbl, units='ms') {
     var today = new Date();
     var end = t_now = today.getTime();
     if(lbl == 'ytd')
-        length = DAY_MS * (today.getWeek()*7 + today.getDay());
+        length = MS_1_DAY * (today.getWeek()*7 + today.getDay());
     else
         length = TIME_LEN[lbl];
     var start = length ? (t_now - length) : null;

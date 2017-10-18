@@ -1,47 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
     <title>Simulator Bot</title>
+		<meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="apple-touch-icon" sizes="57x57" href="{{url_for("static",filename="main/images/apple-icon-57x57.png")}}">
+    <link rel="icon" type="image/png" href="{{url_for("static",filename="main/images/favicon-32x32.png")}}">
+    <!--CSS-->
+    <link rel="stylesheet" type="text/css" href="{{url_for("static", filename="main/css/simbot.css")}}"/>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.16/css/dataTables.bootstrap4.min.css"/>
+    <link rel="stylesheet" type="text/css" href="{{url_for("static", filename="main/css/lib/json-viewer.css")}}"/>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/morris.js/0.5.1/morris.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css">
 		<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!--SCRIPTS-->
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+    <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/sugar.min.js")}}"></script>
+    <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/json-viewer.js")}}"></script>
+    <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/morris.min.js")}}"></script>
     <script type="text/javascript" src="{{url_for("static", filename="main/js/utils.js")}}"></script>
     <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/date.js")}}"></script>
-    <script type="text/javascript" src="{{url_for("static", filename="main/js/lib/sugar.min.js")}}"></script>
-    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
     {% block head %}
     {% endblock %}
   </head>
   <body>
     <div id="navs" class="container-fluid p-0">
-      <nav id="main-nav" class="navbar navbar-toggleable-md navbar-light justify-content-between pt-2" style="display:flex; border-bottom: 1px solid rgba(0,0,0,0.13);">
-        <button id="menu-toggle-btn" class="navbar-toggler collapsed" style="display:none;" type="button"
+      <nav id="main-nav" class="navbar navbar-toggleable-md navbar-light justify-content-between pt-2">
+        <button id="menu-toggle-btn" class="navbar-toggler collapsed" type="button"
           data-toggle="collapse" data-target="#invisi-nav">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="d-flex">
-          <a id="logo_a" class="navbar-brand text-center my-auto pb-0 pt-0" style="position:relative; left:0px;" href="/">
+          <a id="logo_a" class="navbar-brand text-center my-auto pb-0 pt-0" href="/">
             <div class="d-flex">
               <img class="mr-2" style="height:32px; width:32px" src="{{url_for("static", filename="main/images/simbot-icon.jpg")}}">
               <h5 class="mt-2 logo">SIMBOT</h5>
             </div>
           </a>
-          <ul id="main-menu" class="navbar-nav justify-content-center" style="flex-direction: row; margin: 0rem 0.5rem;">
+          <ul id="main-menu" class="navbar-nav justify-content-center">
             <li class="d-flex nav-item">
-              <a class="nav-link d-flex pb-2" style="color:#136d8d" href="/">
+              <a class="nav-link d-flex pb-2" href="/">
                 <i class="fa fa-flask fa-2x mr-1"></i>
                 <span class="my-auto">Simulations</span>
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link d-flex" style="color:#136d8d" href="/analysis">
+              <a class="nav-link d-flex" href="/analysis">
               <i class="fa fa-area-chart fa-2x mr-1"></i>
               <span class="my-auto">Analysis</span>
               </a>
             </li>
           </ul>
         </div>
-
       </nav>
     </div>
     <div id="content" class="container-fluid mx-auto m-0 p-0">
@@ -55,8 +65,13 @@
       {% endblock %}
     </div>
     <div id="postlibs">
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
+      <script src="http://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.0/raphael-min.js"></script>
+      <script src="//cdnjs.cloudflare.com/ajax/libs/jcanvas/20.1.2/jcanvas.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js"></script>
       <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js"></script>
+      <script type="text/javascript" src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+      <script type="text/javascript" src="https://cdn.datatables.net/1.10.16/js/dataTables.bootstrap4.min.js"></script>
       {% block postlibs %}
       {% endblock %}
     </div>

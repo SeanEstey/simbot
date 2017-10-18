@@ -205,7 +205,8 @@ class SimBot():
                     BUY = True
 
                 # Buy Indicator B: low ask inertia
-                book_ind = indicators.order_book(ex['name'], ex['book'])
+                book_ind = indicators.from_orders(ex['name'], ex['book'])
+
                 if book_ind:
                     if book_ind['ask_inertia'] < 15:
                         log.info('ask_inertia=%s, book=%s, ex=%s. buying',

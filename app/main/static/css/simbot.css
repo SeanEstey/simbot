@@ -15,10 +15,29 @@ td select.form-control {
 
 /***** simbot *****/
 
+#main-nav {
+    display:flex;
+    border-bottom: 1px solid rgba(0,0,0,0.13);
+}
+#main-menu {
+    flex-direction:row;
+    margin: 0rem 0.5rem;
+}
+a.nav-link {
+    color:#136d8d!important;
+}
+#menu-toggle-btn {
+    display:none;
+}
+
 .logo {
     color:#464a4c;
     font-family:sans-serif;
     letter-spacing:3px;
+}
+#logo_a {
+    position:relative;
+    left:0px;
 }
 .banner {
     background-color:rgba(49,112,143,0);

@@ -12,70 +12,40 @@ function initMain() {
 
 //------------------------------------------------------------------------------
 function showOrderBookCharts() {
-    var mktChrt = new Chart('mkt-cont', 'Area');
-    mktChrt.toggleSpinner(true);
-    mktChrt.addSeries('/trades/get',
-      {ex:'QuadrigaCX', asset:'btc', label:'price', ykey:'price', type:'area', decimals:2, time_lbl:'1d'});
+    var market = new Chart('mkt-cont', 'Area');
+    var v_orders = new Chart('ord-chrt-contr', 'Area');
+    var buy_rate = new Chart('buy_rate-cont', 'Area');
+    var books = new Chart('orders2-cont', 'Area');
+    var inertia = new Chart('orders3-cont', 'Area');
+    var v_traded = new Chart('orders5-cont', 'Area');
 
-    var orderBookCharts = new Chart('ord-chrt-contr', 'Area');
-    orderBookCharts.toggleSpinner(true);
-    orderBookCharts.addSeries(
-      '/indicators/book',
-      {ex:'QuadrigaCX', asset:'btc', label:'v_ask', ykey:'v_ask', type:'line', decimals:3, time_lbl:'1d'}
+    market.addSeries('/trades/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'price', ykey:'price', type:'area', decimals:2, time_lbl:'7d'});
+    v_orders.addSeries('/indicators/book',
+      {ex:'QuadrigaCX', asset:'btc', label:'v_ask', ykey:'v_ask', type:'line', decimals:3, time_lbl:'7d'}
     );
-    orderBookCharts.addSeries(
-      '/indicators/book',
-      {ex:'QuadrigaCX', asset:'btc', label:'v_bid', ykey:'v_bid', type:'line', decimals:3, time_lbl:'1d'}
+    v_orders.addSeries('/indicators/book',
+      {ex:'QuadrigaCX', asset:'btc', label:'v_bid', ykey:'v_bid', type:'line', decimals:3, time_lbl:'7d'}
     );
-
-    var buyChrt = new Chart('buy_rate-cont', 'Area');
-    buyChrt.toggleSpinner(true);
-    buyChrt.addSeries(
-      '/books/get',
-      {ex:'QuadrigaCX', asset:'btc', label:'buy_rate', ykey:'buy_rate', type:'area', decimals:2, time_lbl:'1d'}
+    buy_rate.addSeries('/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'buy_rate', ykey:'buy_rate', type:'area', decimals:2, time_lbl:'7d'}
     );
-
-    var orders2Chart = new Chart('orders2-cont', 'Area');
-    orders2Chart.toggleSpinner(true);
-    orders2Chart.addSeries(
-      '/books/get',
-      {ex:'QuadrigaCX', asset:'btc', label:'bid', ykey:'bid', type:'area', decimals:2, time_lbl:'1d'}
+    inertia.addSeries('/indicators/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'bid_inertia', ykey:'bid_inertia', type:'line', decimals:3, time_lbl:'7d'}
     );
-    orders2Chart.addSeries(
-      '/books/get',
-      {ex:'QuadrigaCX', asset:'btc', label:'ask', ykey:'ask', type:'area', decimals:2, time_lbl:'1d'}
+    inertia.addSeries('/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'ask_inertia', ykey:'ask_inertia', type:'line', decimals:3, time_lbl:'7d'}
     );
-    var orders3Chart = new Chart('orders3-cont', 'Area');
-    orders3Chart.toggleSpinner(true);
-    orders3Chart.addSeries(
-      '/books/get',
-      {ex:'QuadrigaCX', asset:'btc', label:'bid_inertia', ykey:'bid_inertia', type:'line', decimals:3, time_lbl:'1d'}
+    v_traded.addSeries('/indicators/trade',
+      {ex:'QuadrigaCX', asset:'btc', label:'v_bought', ykey:'v_bought', type:'line', decimals:2, time_lbl:'7d'}
     );
-    orders3Chart.addSeries(
-      '/books/get',
-      {ex:'QuadrigaCX', asset:'btc', label:'ask_inertia', ykey:'ask_inertia', type:'line', decimals:3, time_lbl:'1d'}
+    v_traded.addSeries('/indicators/trade',
+      {ex:'QuadrigaCX', asset:'btc', label:'v_sold', ykey:'v_sold', type:'line', decimals:2, time_lbl:'7d'}
     );
-
-
-
-    var orders5Chart = new Chart('orders5-cont', 'Area');
-    orders5Chart.toggleSpinner(true);
-    orders5Chart.addSeries(
-      '/indicators/trade',
-      {ex:'QuadrigaCX', asset:'btc', label:'v_bought', ykey:'v_bought', type:'line', decimals:2, time_lbl:'1d'}
+    /*books.addSeries('/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'bid', ykey:'bid', type:'area', decimals:2, time_lbl:'7d'}
     );
-    orders5Chart.addSeries(
-      '/indicators/trade',
-      {ex:'QuadrigaCX', asset:'btc', label:'v_sold', ykey:'v_sold', type:'line', decimals:2, time_lbl:'1d'}
-    );
-
-
-    $(window).resize(function(){
-        mkrChrt.resize();
-        orderBookCharts.resize();
-        orders2Chart.resize();
-        orders3Chart.resize();
-        orders4Chart.resize();
-        orders5Chart.resize();
-    })
+    books.addSeries('/books/get',
+      {ex:'QuadrigaCX', asset:'btc', label:'ask', ykey:'ask', type:'area', decimals:2, time_lbl:'7d'}
+    );*/
 }
