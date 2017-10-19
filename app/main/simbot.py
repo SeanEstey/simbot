@@ -5,7 +5,7 @@ from flask import g, current_app
 from app.main import exch_conf, pair_conf
 from app.lib.timer import Timer
 from bson import ObjectId as oid
-from . import books
+from . import simbooks
 from app.main.sms import compose
 from app.main.socketio import smart_emit
 from app.main import indicators
@@ -129,7 +129,7 @@ class SimBot():
         gain_vol = round(min(max_vol, ask_vol),5)
         loss_vol = round(ask*gain_vol,2)
 
-        books.update(exch, pair, 'asks', self._id, gain_vol)
+        simbooks.update(exch, pair, 'asks', self._id, gain_vol)
 
         holding = self.add_trade(exch, pair, 'BUY', ask, [gain_vol, loss_vol*-1])
 
@@ -147,7 +147,7 @@ class SimBot():
         loss_vol = min(balance[0], bid_vol)
         gain_vol = round(bid*loss_vol,2)
 
-        books.update(holding['exchange'], holding['pair'], 'bids', self._id, loss_vol)
+        simbooks.update(holding['exchange'], holding['pair'], 'bids', self._id, loss_vol)
 
         holding = self.add_trade(
             holding['exchange'],
@@ -171,6 +171,12 @@ class SimBot():
         pass
 
     #---------------------------------------------------------------
+    def update(self):
+        self.eval_buy_positions()
+        self.eval_sell_positions()
+        self.eval_arbitrage()
+
+    #---------------------------------------------------------------
     def eval_sell_positions(self):
         """Evaluate each open holding, sell on margin criteria
         """
@@ -178,7 +184,7 @@ class SimBot():
         for i in range(len(_holdings)):
             holding = _holdings[i]
             ex = get_ex(exch=holding['exchange'], pair=holding['pair'])[0]
-            bid = books.get_bid(ex['name'], ex['book'])
+            bid = simbooks.get_bid(ex['name'], ex['book'])
             margin = round(bid['price'] - holding['trades'][0]['price'],2)
 
             if margin >= self.rules['sell_margin']:
@@ -192,7 +198,7 @@ class SimBot():
         """
         for ex in get_ex():
             BUY = False
-            ask = books.get_ask(ex['name'], ex['book'])
+            ask = simbooks.get_ask(ex['name'], ex['book'])
             holdings = self.holdings(exch=ex['name'], pair=ex['book'])
 
             if len(holdings) == 0:
@@ -208,13 +214,10 @@ class SimBot():
                 book_ind = indicators.from_orders(ex['name'], ex['book'])
 
                 if book_ind:
-                    if book_ind['ask_inertia'] < 15:
+                    if book_ind['ask_inertia'] > 0 and book_ind['ask_inertia'] < 15:
                         log.info('ask_inertia=%s, book=%s, ex=%s. buying',
                         book_ind['ask_inertia'], ex['book'], ex['name'])
                         BUY = True
-                    elif book_ind['ask_inertia'] > 15:
-                        log.debug('ask_inertia=%s, book=%s, ex=%s. too high for buy',
-                        book_ind['ask_inertia'], ex['book'], ex['name'])
 
             if BUY:
                 holding = self.buy_market_order(
@@ -240,8 +243,8 @@ class SimBot():
             pair = buy_ex['book']
             # Match order volume for cross-exchange trade
             vol = min(
-                books.get_ask(buy_ex['name'], pair)['volume'],
-                books.get_bid(sell_ex['name'], pair)['volume']
+                simbooks.get_ask(buy_ex['name'], pair)['volume'],
+                simbooks.get_bid(sell_ex['name'], pair)['volume']
             )
             if vol == 0:
                 continue

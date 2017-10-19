@@ -2,8 +2,18 @@
 from logging import getLogger
 from flask import g
 from app.lib.timer import Timer
-
 log = getLogger(__name__)
+
+EX = ['QuadrigaCX']
+BOOKS = ['btc_cad', 'eth_cad']
+
+#-------------------------------------------------------------------------------
+def merge_all():
+    for ex in EX:
+        for book in BOOKS:
+            doc = g.db['pub_books'].find_one({'ex':ex,'book':book}).sort({'_id':-1})
+            orders = {'bids':doc['bids'], 'asks':doc['asks']}
+            merge(orders, ex, book, book[4:7], book[0:3], 0)
 
 #-------------------------------------------------------------------------------
 def get_bid(exch, pair):

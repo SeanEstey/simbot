@@ -47,9 +47,17 @@ function Chart(contId, type) {
     //$(window).resize(function(){this.resize()});
 }
 
-Chart.prototype.addSeries = function(url, options) {
+Chart.prototype.querySeries = function(url, options) {
     this.querySeriesData(url, options, this.series.length+1);
 }
+
+Chart.prototype.addSeries = function(data, options) {
+    var _options = JSON.parse(JSON.stringify(options));
+    _options['data'] = data;
+    this.series.push(_options);
+    this.draw();
+}
+
 
 Chart.prototype.replaceSeries = function(url, options, idx) { 
     this.querySeriesData(url, options, idx); 

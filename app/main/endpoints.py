@@ -7,18 +7,19 @@ from flask import g, request
 log = logging.getLogger(__name__)
 from . import main
 from . import quadcx, coinsquare
-from .simulate import SimBot
+from .simbot import SimBot
 
-@main.route('/ind/test', methods=['GET'])
-def _test_ind():
-    from app.main.indicators import build_series
-    utcnow = datetime.now()+timedelta(hours=6)
-    build_series(
-        'QuadrigaCX',
-        'btc_cad',
-        utcnow - timedelta(hours=24),
-        utcnow)
-    return 'ok'
+@main.route('/indicators/get', methods=['POST'])
+def _get_ind():
+    get = request.form.get
+    series = list(
+        g.db['chart_series'].find({
+            'ex':get('ex'),
+            'book':get('asset')+'_cad',
+            'start':{'$gte':datetime.fromtimestamp(int(get('since')))}
+        }).sort('start',1)
+    )
+    return dumps(series)
 
 @main.route('/stats/get', methods=['POST'])
 def get_earnings():

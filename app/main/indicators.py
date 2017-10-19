@@ -1,16 +1,27 @@
 # indicators.py
-from bson.json_util import dumps
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from dateutil.parser import parse
 from flask import g
-from app.lib.timer import Timer
 from logging import getLogger
 log = getLogger(__name__)
 
 #---------------------------------------------------------------
+def update_time_series():
+    """Time series is for client chart data.
+    """
+    utcnow = datetime.now()+timedelta(hours=6)
+    build_series(
+        'QuadrigaCX',
+        'btc_cad',
+        utcnow - timedelta(days=1),
+        utcnow)
+
+#---------------------------------------------------------------
 def build_series(ex, book, start, end):
-    log.debug('build_series, start=%s, end=%s', start, end)
-    p_start = p_end = start
+    """Calculate key indicators for 10 min periods in given date range
+    for given exchange/book.
+    """
+    p_start = p_end = datetime.combine(start.date(), time(start.hour, int(start.minute/10*10)))
     p_end += timedelta(minutes=10)
     n_mod = n_upsert = 0
 
@@ -33,13 +44,14 @@ def build_series(ex, book, start, end):
                 'sum.n_buys':trade_ind['n_buys'],
                 'sum.n_sells':trade_ind['n_sells']
             }},
-            False #True
+            True
         )
         p_start += timedelta(minutes=10)
         p_end += timedelta(minutes=10)
         n_mod += r.modified_count
         n_upsert += 1 if r.upserted_id else 0
-        log.info('indicators modified=%s, created=%s', n_mod, n_upsert)
+
+    log.debug('indicators modified=%s, created=%s', n_mod, n_upsert)
 
 #---------------------------------------------------------------
 def from_trades(ex, book, start, end):
@@ -51,11 +63,9 @@ def from_trades(ex, book, start, end):
         'n_sells':0,
         'buy_rate':0
     }
-
     trades = g.db['pub_trades'].find({
         'exchange':ex, 'currency':book[0:3], 'date':{'$gte':start, '$lt':end}
     })
-
     for t in trades:
         ind['price'].append(t['price'])
         if t.get('side','') == 'buy':
@@ -67,7 +77,6 @@ def from_trades(ex, book, start, end):
 
     ind['price'] = sum(ind['price'])/len(ind['price']) if len(ind['price']) > 0 else 0.0
     ind['buy_rate'] = ind['n_buys']/(ind['n_buys']+ind['n_sells']) if ind['n_buys']+ind['n_sells'] > 0 else 0.0
-
     return ind
 
 #---------------------------------------------------------------
@@ -80,7 +89,6 @@ def from_orders(ex, book, start=None, end=None):
         'ask_vol':[],
         'ask_inertia':[]
     }
-
 
     if start is None and end is None:
         docs = g.db['pub_books'].find({'ex':ex, 'book':book}).sort('date',-1).limit(1)
@@ -96,23 +104,23 @@ def from_orders(ex, book, start=None, end=None):
         #log.debug('averaging n=%s order_books', docs.count())
         asks = doc['asks']
         bids = doc['bids']
-        v_ask = v_bid = 0
+        v_ask = v_bid = 0.0
         ask_delta = [float(asks[0][0]) * 1.01, None]
         bid_delta = [float(bids[0][0]) * 0.99, None]
 
         for b in bids:
-            v_bid += b[1]
-            if bid_delta[1] is None and b[0] <= bid_delta[0]:
+            v_bid += float(b[1])
+            if bid_delta[1] is None and float(b[0]) <= bid_delta[0]:
                 bid_delta[1] = v_bid
         for a in asks:
-            v_ask += a[1]
-            if ask_delta[1] is None and a[0] >= ask_delta[0]:
+            v_ask += float(a[1])
+            if ask_delta[1] is None and float(a[0]) >= ask_delta[0]:
                 ask_delta[1] = v_ask
 
-        ind['bid_price'].append(bids[0][0])
+        ind['bid_price'].append(float(bids[0][0]))
         ind['bid_vol'].append(v_bid)
         ind['bid_inertia'].append(bid_delta[1])
-        ind['ask_price'].append(asks[0][0])
+        ind['ask_price'].append(float(asks[0][0]))
         ind['ask_vol'].append(v_ask)
         ind['ask_inertia'].append(ask_delta[1])
 
