@@ -43,19 +43,36 @@ function showOrderBookCharts() {
                     data[i][k] = data[i]['sum'][k];
                 }
             }
-            console.log(data);
-
-            market.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'price', ykey:'price', type:'area', decimals:2, time_lbl:'7d'});
-            v_orders.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'ask_vol', ykey:'ask_vol', type:'line', decimals:3, time_lbl:'7d'});
-            v_orders.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'bid_vol', ykey:'bid_vol', type:'line', decimals:3, time_lbl:'7d'});
-            //buy_rate.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'buy_rate', ykey:'buy_rate', type:'area', decimals:2, time_lbl:'7d'});
-            inertia.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'bid_inertia', ykey:'bid_inertia', type:'line', decimals:3, time_lbl:'7d'});
-            inertia.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'ask_inertia', ykey:'ask_inertia', type:'line', decimals:3, time_lbl:'7d'});
-            v_traded.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'buy_vol', ykey:'buy_vol', type:'line', decimals:2, time_lbl:'7d'});
-            v_traded.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'sell_vol', ykey:'sell_vol', type:'line', decimals:2, time_lbl:'7d'});
-            books.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'bid_price', ykey:'bid_price', type:'area', decimals:2, time_lbl:'7d'});
-            books.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'ask_price', ykey:'ask_price', type:'area', decimals:2, time_lbl:'7d'});
-
+            //console.log(data);
+            market.addSeries(data,
+                {ex:'QuadrigaCX', asset:'btc', label:'price', ykey:'price', type:'area',
+                decimals:2, time_lbl:'1d'});
+            v_orders.addSeries(data,
+                {ex:'QuadrigaCX', asset:'btc', label:'ask_vol', ykey:'ask_vol', type:'line',
+                decimals:3, time_lbl:'7d'});
+            v_orders.addSeries(data, 
+                {ex:'QuadrigaCX', asset:'btc', label:'bid_vol', ykey:'bid_vol', type:'line',
+                decimals:3, time_lbl:'7d'});
+            inertia.addSeries(data,
+                {ex:'QuadrigaCX', asset:'btc', label:'bid_inertia', ykey:'bid_inertia', type:'line',
+                decimals:3, time_lbl:'7d'});
+            inertia.addSeries(data,
+                {ex:'QuadrigaCX', asset:'btc', label:'ask_inertia', ykey:'ask_inertia', type:'line',
+                decimals:3, time_lbl:'7d'});
+            v_traded.addSeries(data,
+                {ex:'QuadrigaCX', asset:'btc', label:'buy_vol', ykey:'buy_vol', type:'line',
+                decimals:2, time_lbl:'7d'});
+            v_traded.addSeries(data,
+                {ex:'QuadrigaCX', asset:'btc', label:'sell_vol', ykey:'sell_vol', type:'line',
+                decimals:2, time_lbl:'7d'});
+            books.addSeries(data,
+                {ex:'QuadrigaCX', asset:'btc', label:'bid_price', ykey:'bid_price', type:'area',
+                decimals:2, time_lbl:'7d'});
+            books.addSeries(data,
+                {ex:'QuadrigaCX', asset:'btc', label:'ask_price', ykey:'ask_price', type:'area',
+                decimals:2, time_lbl:'7d'});
+            //buy_rate.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'buy_rate', ykey:'buy_rate',
+                type:'area', decimals:2, time_lbl:'7d'});
         }
     });
 }

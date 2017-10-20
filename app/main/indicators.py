@@ -64,7 +64,7 @@ def from_trades(ex, book, start, end):
         'buy_rate':0
     }
     trades = g.db['pub_trades'].find({
-        'exchange':ex, 'currency':book[0:3], 'date':{'$gte':start, '$lt':end}
+        'ex':ex, 'book':book, 'date':{'$gte':start, '$lt':end}
     })
     for t in trades:
         ind['price'].append(t['price'])

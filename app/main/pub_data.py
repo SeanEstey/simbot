@@ -40,11 +40,11 @@ def save_trades():
 
             if n_new > 0:
                 # Update simulation order book.
-                asset = book[0:3]
-                quadcx.update('CAD', asset.upper())
-                smart_emit('updateTickers',None)
-                log.debug('%s/%s new trades, exch=%s, book=%s', n_new, n_total, 'QuadrigaCX', book)
-            sleep(5)
+                #asset = book[0:3]
+                #quadcx.update('CAD', asset.upper())
+                #smart_emit('updateTickers',None)
+                #log.debug('%s/%s new trades, exch=%s, book=%s', n_new, n_total, 'QuadrigaCX', book)
+                pass
 
 #---------------------------------------------------------------
 def save_orderbook():

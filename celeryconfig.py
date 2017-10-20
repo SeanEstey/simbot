@@ -11,7 +11,7 @@ worker_concurrency = 1
 beat_schedule = {
     'update_ex_data': {
         'task':'app.main.tasks.update_ex_data',
-        'schedule': 10.0
+        'schedule': 30.0
     },
     'update_bots': {
         'task':'app.main.tasks.update_bots',

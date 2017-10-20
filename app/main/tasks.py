@@ -5,6 +5,7 @@ from app import celery
 from flask import g
 from app.main import quadcx, coinsquare, indicators, pub_data
 from app.main.simbot import SimBot
+from app.main import simbooks
 from app.main.socketio import smart_emit
 from app.quadriga import QuadrigaClient
 log = logging.getLogger(__name__)

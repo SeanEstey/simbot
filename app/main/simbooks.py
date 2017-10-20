@@ -11,7 +11,9 @@ BOOKS = ['btc_cad', 'eth_cad']
 def merge_all():
     for ex in EX:
         for book in BOOKS:
-            doc = g.db['pub_books'].find_one({'ex':ex,'book':book}).sort({'_id':-1})
+            docs = g.db['pub_books'].find({'ex':ex, 'book':book}).sort('date',-1).limit(1)
+            log.debug('ex=%s, book=%s, docs.count=%s', ex, book, docs.count())
+            doc = list(docs)[0]
             orders = {'bids':doc['bids'], 'asks':doc['asks']}
             merge(orders, ex, book, book[4:7], book[0:3], 0)
 
@@ -19,7 +21,7 @@ def merge_all():
 def get_bid(exch, pair):
     """Find the highest bid price/volume not consumed by simulation.
     """
-    bids = g.db['exchanges'].find_one({'name':exch, 'book':pair})['bids']
+    bids = g.db['sim_ex'].find_one({'name':exch, 'book':pair})['bids']
     idx=0
     while idx<len(bids):
         bid = bids[idx]
@@ -37,7 +39,7 @@ def fill_limit_order(ex, pair):
 def get_ask(exch, pair):
     """Find the lowest ask price/vol not consumed by simulation.
     """
-    asks = g.db['exchanges'].find_one({'name':exch, 'book':pair})['asks']
+    asks = g.db['sim_ex'].find_one({'name':exch, 'book':pair})['asks']
     idx=0
     while idx<len(asks):
         ask = asks[idx]
@@ -57,7 +59,7 @@ def update(ex_name, pair, section, bot_id, vol_consumed):
     :section: book section (str)
         'bids' or 'asks'
     """
-    ex = g.db['exchanges'].find_one({'name':ex_name, 'book':pair})
+    ex = g.db['sim_ex'].find_one({'name':ex_name, 'book':pair})
     order = ex[section][0]
 
     if order.get('bot_consumed'):
@@ -68,7 +70,7 @@ def update(ex_name, pair, section, bot_id, vol_consumed):
     order['bot_id'] = bot_id
     ex[section][0] = order
 
-    g.db['exchanges'].update_one(
+    g.db['sim_ex'].update_one(
         {'_id':ex['_id']},
         {'$set':{
             section: ex[section]
@@ -83,40 +85,48 @@ def merge(orders, ex_name, book_name, base, trade, spread):
         {'bids':[], 'asks':[]}
     """
     n_matches = 0
-    ex = g.db['exchanges'].find_one({'name':ex_name, 'book':book_name})
+    ex = g.db['sim_ex'].find_one({'name':ex_name, 'book':book_name})
+    new_orders = {'asks':[], 'bids':[]}
 
     for section in ['bids', 'asks']:
         for order in orders[section]:
             b_match = False
             for db_order in ex[section]:
-                if db_order['price'] == order['price'] and db_order.get('bot_consumed'):
+                if db_order['price'] == order[0] and db_order.get('bot_consumed'):
                     # Assume order is new if volume increase at matching order price.
-                    if order['volume'] > db_order['volume']:
+                    if order[1] > db_order['volume']:
                         continue
                     # Merge updated order volume w/ volume consumed by simulation.
-                    order.update({
+
+                    new_orders[section].append({
+                        'price':db_order['price'],
                         'bot_consumed':db_order['bot_consumed'],
                         'bot_id':db_order['bot_id'],
-                        'original':db_order['original']
+                        'original':db_order['original'],
+                        'volume':db_order['original']
                     })
                     b_match = True
                     n_matches += 1
             if b_match == False:
-                order['original'] = order['volume']
-
+                new_orders[section].append({
+                    'price': order[0],
+                    'volume': order[1],
+                    'original': order[1]
+                })
     #log.debug('books.merge: %s modified orders syncd to new order_books', n_matches)
+    #log.debug(new_orders)
 
-    r = g.db['exchanges'].update_one(
+    r = g.db['sim_ex'].update_one(
         {'name':ex_name, 'book':book_name},
         {'$set':{
             'name':ex_name,
             'base':base,
             'trade':trade,
             'book':book_name,
-            'bids':orders['bids'],
-            'asks':orders['asks'],
-            'bid': orders['bids'][0]['price'],
-            'ask': orders['asks'][0]['price'],
+            'bids':new_orders['bids'],
+            'asks':new_orders['asks'],
+            'bid': new_orders['bids'][0]['price'],
+            'ask': new_orders['asks'][0]['price'],
             'spread':spread
         }},
         True

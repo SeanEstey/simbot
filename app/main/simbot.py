@@ -23,7 +23,7 @@ def get_ex(exch=None, pair=None):
         query['name'] = exch
     if pair:
         query['book'] = pair
-    return list(g.db['exchanges'].find(query))
+    return list(g.db['sim_ex'].find(query))
 
 #-------------------------------------------------------------------------------
 def create(name, start_cad, buy_margin, sell_margin):
@@ -231,15 +231,15 @@ class SimBot():
     def eval_arbitrage(self):
         """Make cross-exchange trade if bid/ask ratio > 1.
         """
-        r = g.db['exchanges'].aggregate([
+        r = g.db['sim_ex'].aggregate([
             {'$group':{'_id':'$book', 'min_ask':{'$min':'$ask'}, 'max_bid':{'$max':'$bid'}}}])
 
         for book in list(r):
             if book['max_bid']/book['min_ask'] <= 1:
                 continue
 
-            buy_ex = g.db['exchanges'].find_one({'ask':book['min_ask']})
-            sell_ex = g.db['exchanges'].find_one({'bid':book['max_bid']})
+            buy_ex = g.db['sim_ex'].find_one({'ask':book['min_ask']})
+            sell_ex = g.db['sim_ex'].find_one({'bid':book['max_bid']})
             pair = buy_ex['book']
             # Match order volume for cross-exchange trade
             vol = min(
@@ -399,18 +399,6 @@ class SimBot():
             'earnings': earn
         }
 
-    #---------------------------------------------------------------
-    def calc_limit_imbalance(self, exch=None):
-        """research paper: "as we found that on most days, large spreads
-        indicated low price changes"""
-        pass
-
-        """r = g.db['trades'].find({
-            'exchange':'QuadrigaCX',
-            'currency':'btc',
-            'date':{'$gte':ISODate("2017-09-23T16:50:41.000-06:00")}
-        })
-        """
     #---------------------------------------------------------------
     def __init__(self, name):
         """Load bot properties from Mongo

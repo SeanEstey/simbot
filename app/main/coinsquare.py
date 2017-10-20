@@ -6,7 +6,7 @@ from logging import getLogger
 from flask import g
 from app.lib.timer import Timer
 from app.main import exch_conf
-from . import books
+from . import simbooks
 log = getLogger(__name__)
 
 #-------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ def update_order_book(book_name, base, trade):
         book['bids'].append({'price':price, 'volume':round(volume,5)})
 
     spread = round(book['asks'][0]['price'] - book['bids'][0]['price'], 2)
-    books.merge(book, 'Coinsquare', book_name, base, trade, spread)
+    simbooks.merge(book, 'Coinsquare', book_name, base, trade, spread)
     #pprint('Coinsquare bid=%s, ask=%s, spread=%s [%sms]' %(
     #    book['bids'][0]['price'], book['asks'][0]['price'], spread, t1.clock(t='ms')))
 
