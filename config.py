@@ -47,6 +47,7 @@ EXCHANGES = [
         'WITH_FEE_WIRE': 0,
         'WITH_FEE_EFT': 0,
         'WITH_FEE_INTERAC': 0.02,
+        'ASSETS':['btc', 'eth', 'cad'],
         'TRADE_FEE': {
             'btc_cad': 0.005,
             'eth_cad': 0.005,

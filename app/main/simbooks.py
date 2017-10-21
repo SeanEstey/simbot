@@ -1,4 +1,4 @@
-# books.py
+# simbooks.py
 from logging import getLogger
 from flask import g
 from app.lib.timer import Timer
@@ -12,7 +12,6 @@ def merge_all():
     for ex in EX:
         for book in BOOKS:
             docs = g.db['pub_books'].find({'ex':ex, 'book':book}).sort('date',-1).limit(1)
-            log.debug('ex=%s, book=%s, docs.count=%s', ex, book, docs.count())
             doc = list(docs)[0]
             orders = {'bids':doc['bids'], 'asks':doc['asks']}
             merge(orders, ex, book, book[4:7], book[0:3], 0)
@@ -21,7 +20,7 @@ def merge_all():
 def get_bid(exch, pair):
     """Find the highest bid price/volume not consumed by simulation.
     """
-    bids = g.db['sim_ex'].find_one({'name':exch, 'book':pair})['bids']
+    bids = g.db['sim_books'].find_one({'name':exch, 'book':pair})['bids']
     idx=0
     while idx<len(bids):
         bid = bids[idx]
@@ -39,7 +38,7 @@ def fill_limit_order(ex, pair):
 def get_ask(exch, pair):
     """Find the lowest ask price/vol not consumed by simulation.
     """
-    asks = g.db['sim_ex'].find_one({'name':exch, 'book':pair})['asks']
+    asks = g.db['sim_books'].find_one({'name':exch, 'book':pair})['asks']
     idx=0
     while idx<len(asks):
         ask = asks[idx]
@@ -59,7 +58,7 @@ def update(ex_name, pair, section, bot_id, vol_consumed):
     :section: book section (str)
         'bids' or 'asks'
     """
-    ex = g.db['sim_ex'].find_one({'name':ex_name, 'book':pair})
+    ex = g.db['sim_books'].find_one({'name':ex_name, 'book':pair})
     order = ex[section][0]
 
     if order.get('bot_consumed'):
@@ -70,7 +69,7 @@ def update(ex_name, pair, section, bot_id, vol_consumed):
     order['bot_id'] = bot_id
     ex[section][0] = order
 
-    g.db['sim_ex'].update_one(
+    g.db['sim_books'].update_one(
         {'_id':ex['_id']},
         {'$set':{
             section: ex[section]
@@ -85,7 +84,7 @@ def merge(orders, ex_name, book_name, base, trade, spread):
         {'bids':[], 'asks':[]}
     """
     n_matches = 0
-    ex = g.db['sim_ex'].find_one({'name':ex_name, 'book':book_name})
+    ex = g.db['sim_books'].find_one({'name':ex_name, 'book':book_name})
     new_orders = {'asks':[], 'bids':[]}
 
     for section in ['bids', 'asks']:
@@ -116,7 +115,7 @@ def merge(orders, ex_name, book_name, base, trade, spread):
     #log.debug('books.merge: %s modified orders syncd to new order_books', n_matches)
     #log.debug(new_orders)
 
-    r = g.db['sim_ex'].update_one(
+    r = g.db['sim_books'].update_one(
         {'name':ex_name, 'book':book_name},
         {'$set':{
             'name':ex_name,

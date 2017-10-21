@@ -75,7 +75,7 @@ def update_ticker(book_name, base, trade):
     else:
         last = False
 
-    r = g.db['sim_ex'].update_one(
+    r = g.db['sim_books'].update_one(
         {'name':'QuadrigaCX', 'book':book_name},
         {'$set':{
             'base':base,

@@ -42,11 +42,14 @@ function showOrderBookCharts() {
                 for(var k in data[i]['sum']) {
                     data[i][k] = data[i]['sum'][k];
                 }
+                delete data[i]['avg'];
+                delete data[i]['sum'];
+                delete data[i]['_id'];
             }
-            //console.log(data);
+            console.log(data);
             market.addSeries(data,
                 {ex:'QuadrigaCX', asset:'btc', label:'price', ykey:'price', type:'area',
-                decimals:2, time_lbl:'1d'});
+                decimals:2, time_lbl:'7d'});
             v_orders.addSeries(data,
                 {ex:'QuadrigaCX', asset:'btc', label:'ask_vol', ykey:'ask_vol', type:'line',
                 decimals:3, time_lbl:'7d'});
@@ -72,7 +75,7 @@ function showOrderBookCharts() {
                 {ex:'QuadrigaCX', asset:'btc', label:'ask_price', ykey:'ask_price', type:'area',
                 decimals:2, time_lbl:'7d'});
             //buy_rate.addSeries(data, {ex:'QuadrigaCX', asset:'btc', label:'buy_rate', ykey:'buy_rate',
-                type:'area', decimals:2, time_lbl:'7d'});
+            //    type:'area', decimals:2, time_lbl:'7d'});
         }
     });
 }

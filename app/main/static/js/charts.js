@@ -1,5 +1,4 @@
 /* charts.js */
-X_AXIS_PERIODS = 144; // DELETE ME
 MS_10_MIN = 600000;
 MS_1_HR = 3600000;
 MS_1_DAY = 86400000;
@@ -74,20 +73,23 @@ Chart.prototype.combineSeries = function() {
     */
     if(this.series.length < 1)
         return;
-    var span = this.getTimespan(this.series[0]['time_lbl'], units='ms');
-    var period_len = (span[1]-span[0]) / X_AXIS_PERIODS; 
+
     var data = [];
+    var period = PERIODS[this.series[0]['time_lbl']];
+    var duration = period['duration'];
+    var n_periods = period['n_periods'];
+    var step_idx = duration / MS_10_MIN;
 
     // Create datapoints by combining series data for each time period.
-    for(var i=0; i<X_AXIS_PERIODS; i++) {
-        var start = span[0] + (i*period_len);
-        var end = start + period_len;
-        var point = { 'time':start };
+    for(var i=0; i<this.series[0]['data'].length; i+=step_idx) {
+        //var start = span[0] + (i*period_len);
+        //var end = start + period_len;
+        var point = { 'time':this.series[0]['data'][i]['start']['$date'] };
 
         for(var j=0; j<this.series.length; j++) {
             var s = this.series[j];
-            var avg =  this.yValueAvg(s['data'], s['ykey'], start, end);
-            point[s['label']] = avg;
+            //var avg =  this.yValueAvg(s['data'], s['ykey'], start, end);
+            point[s['label']] = s['data'][i][s['ykey']]; //avg;
         }
         data.push(point);
     }
