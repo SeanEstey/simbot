@@ -19,11 +19,24 @@ ENV_VARS = [
     'TEST'
 ]
 SMS_ALERT_NUMBER = "+17808635715"
+
 EXCHANGES = [
     {
         'NAME': 'Coinsquare',
         'API_EXISTS':False,
         'API_ENABLED':False,
+        'PAIRS': {
+            ('btc','cad'): {
+                'name':'btc_cad',
+                'book':'btc_cad',
+                'fee': 0.002
+            },
+            ('eth','cad'): {
+                'name':'eth_cad',
+                'book':'eth_cad',
+                'fee': 0.002
+            }
+        },
         'BOOK_URL': 'https://coinsquare.io/api/v1/data/bookandsales/%s/%s/16?', #base,trade
         'FUND_FEE_BANK_DRAFT': 0.0025,
         'FUND_FEE_WIRE': 0.005,
@@ -39,7 +52,19 @@ EXCHANGES = [
         'NAME':'QuadrigaCX',
         'API_EXISTS':True,
         'API_ENABLED':True,
-        'TICKER_URL': 'https://api.quadrigacx.com/v2/ticker?book=%s', # %s=book_name
+        'PAIRS': {
+            ('btc','cad'): {
+                'name':'btc_cad',
+                'book':'btc_cad',
+                'fee': 0.005
+            },
+            ('eth','cad'): {
+                'name':'eth_cad',
+                'book':'eth_cad',
+                'fee': 0.005
+            }
+        },
+        'TICKER_URL': 'https://api.quadrigacx.com/v2/ticker?book=%s', # btc_cad, eth_cad
         'BOOK_URL': 'https://api.quadrigacx.com/v2/order_book?book=%s', # %s=book_name
         'FUND_FEE_INTERAC': 0.015,
         'FUND_FEE_WIRE': 0,
@@ -47,30 +72,38 @@ EXCHANGES = [
         'WITH_FEE_WIRE': 0,
         'WITH_FEE_EFT': 0,
         'WITH_FEE_INTERAC': 0.02,
-        'ASSETS':['btc', 'eth', 'cad'],
         'TRADE_FEE': {
             'btc_cad': 0.005,
             'eth_cad': 0.005,
             'eth_btc': 0.002
         }
+    },
+    {
+        'NAME':'Kraken',
+        'API_EXISTS':True,
+        'API_ENABLED':False,
+        'PAIRS': {
+            ('btc','cad'): {
+                'name':'XXBTZCAD',
+                'book':'XXBTZCAD'
+            },
+            ('eth','cad'): {
+                'name':'XETHZCAD',
+                'book':'XETHZCAD'
+            }
+        },
+        'TICKER_URL': 'https://api.kraken.com/0/public/Ticker?pair=%s' # %s=book
     }
 ]
-PAIRS = [
-    {
-        'NAME': 'btc_cad',
+
+PAIRS = {
+    ('btc','cad'): {
         'MAX_VOL': 0.15,
         'MIN_ARBIT_RATE': 50,
         'ASK_INERTIA':15
     },
-    {
-        'NAME': 'eth_cad',
+    ('eth','cad'): {
         'MAX_VOL': 1.5,
         'MIN_ARBIT_RATE': 25
-    },
-    {
-        'NAME': 'eth_btc',
-        'MAX_VOL': 1.25,
-        'MIN_ARBIT_RATE': 0.0015
     }
-]
-
+}

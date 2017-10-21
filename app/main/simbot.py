@@ -2,33 +2,17 @@
 """
 import logging
 from flask import g, current_app
-from app.main import exch_conf, pair_conf
+from app.main import ex_confs, pair_conf
 from app.lib.timer import Timer
 from bson import ObjectId as oid
 from app.main.sms import compose
 from app.main.socketio import smart_emit
 from app.main import indicators, simbooks, simex
+from config import PAIRS
 log = logging.getLogger(__name__)
-
-#---------------------------------------------------------------
-def pair_names(pair_str):
-    div_idx = pair_str.index('_')
-    return [ pair_str[0:div_idx], pair_str[div_idx+1:] ]
-
-#-------------------------------------------------------------------------------
-def get_ex(exch=None, pair=None):
-    query = {}
-    if exch:
-        query['name'] = exch
-    if pair:
-        query['book'] = pair
-    return list(g.db['sim_books'].find(query))
 
 #-------------------------------------------------------------------------------
 def create(name, start_cad, buy_margin, sell_margin):
-    from config import EXCHANGES
-    ex_confs = [n for n in EXCHANGES if n['API_ENABLED'] == True]
-
     r = g.db['sim_bots'].insert_one({
         'name':name,
         'start_balance': start_cad,
@@ -41,18 +25,18 @@ def create(name, start_cad, buy_margin, sell_margin):
     })
 
     # Create start balance w/ all API-enabled exchanges
-    for conf in ex_confs:
+    for conf in ex_confs():
         g.db['sim_balances'].insert_one({
             'bot_id':r.inserted_id,
             'ex':conf['NAME'],
             'btc':0.0000000,
             'eth':0.0000000,
-            'cad':start_cad/len(ex_confs)
+            'cad':start_cad/len(ex_confs())
         })
 
     log.info('Created %s bot w/ $%s balance', name, start_cad)
 
-########################### Class: SimBot ##########################
+#-------------------------------------------------------------------------------
 class SimBot():
     """TODO: determine volatility, adjust buy/sell margins dynamically.
     High volatility == bigger margins, low volatility == lower margins
@@ -63,83 +47,24 @@ class SimBot():
     rules = None
 
     #--------------------------------------------------------------------------
-    def add_holding(self, exch, pair, trade):
-        """status values: 'pending', 'open', 'closed'
-        """
-        r = g.db['holdings'].insert_one({
-            'bot_id':self._id,
-            'exchange':exch,
-            'status':'open',
-            'fees':trade['fee'],
-            'pair': pair,
-            'balance': trade['volume'],
-            'trades':[trade]
-        })
-        return g.db['holdings'].find_one({'_id':oid(r.inserted_id)})
+    def update(self):
+        self.eval_buy_positions()
+        self.eval_sell_positions()
+        self.eval_arbitrage()
 
     #--------------------------------------------------------------------------
-    def holdings(self, exch=None, pair=None, status=None):
-        """status values: 'pending', 'open', 'closed'
-        """
-        query = {'bot_id':self._id}
-        if exch:
-            query['exchange'] = exch
-        if status:
-            query['status'] = status
-        if pair:
-            query['pair'] = pair
-        return list(g.db['holdings'].find(query))
+    def calc_fee(self, ex, pair, price, vol):
+        return ex_confs(name=ex)['TRADE_FEE'][pair] * (vol*price)
 
     #--------------------------------------------------------------------------
-    def calc_fee(self, exch, pair, price, vol):
-        return exch_conf(exch)['TRADE_FEE'][pair] * (vol*price)
-
-    #--------------------------------------------------------------------------
-    def update_balance(self, exch, asset, volume):
-        bal = g.db['accounts'].find_one({'bot_id':self._id, 'name':exch})
-        g.db['accounts'].update_one({'_id':bal['_id']},{'$set':{asset:bal[asset]+volume}})
-
-    #--------------------------------------------------------------------------
-    def add_trade(self, exch, book, _type, price, pair_vol, holding=None):
-        """Add a BUY/SELL trade to given holding, closing it if
-        sell balance reaches 0.
-
-        :pair_vol: list w/ float pair (i.e [0.1111,-500.00] for
-        buy order of BTC priced in CAD
-        """
-        fee_pct = exch_conf(exch)['TRADE_FEE'][book]
-        fee = fee_pct * abs(pair_vol[1])
-        trade = {
-            'type' :_type,
-            'price': price,
-            'volume': pair_vol,
-            'fee': fee
-        }
-
-        #self.update_balance(exch, book[0:3], pair_vol[0])
-        #self.update_balance(exch, book[4:], pair_vol[1] - fee)
-
-        if holding is None:
-            return self.add_holding(exch, book, trade)
-        else:
-            holding['trades'].append(trade)
-            holding['balance'][0] += pair_vol[0]
-            holding['balance'][1] += pair_vol[1]
-            holding['fees'] += trade['fee']
-            if holding['balance'][0] == 0:
-                holding['status'] = 'closed'
-            g.db['holdings'].update_one({'_id':holding['_id']},{'$set':holding})
-            return holding
-
-    #--------------------------------------------------------------------------
-    def buy_market_order(self, ex, book, ask_price, ask_vol, vol_cap=True):
-        max_vol = pair_conf(book)['MAX_VOL'] if vol_cap else ask_vol
+    def buy_market_order(self, ex, pair, ask_price, ask_vol, vol_cap=True):
+        max_vol = PAIRS[pair]['MAX_VOL'] if vol_cap else ask_vol
         vol = min(max_vol, ask_vol)
         cost = round(ask_price * vol * -1, 2)
-        simex.exec_trade(self._id, ex, book, 'buy', ask_price, vol, cost)
+        simex.exec_trade(self._id, ex, pair, 'buy', ask_price, vol, cost)
 
-        log.info('BUY order, ex=%s, %s=%s, %s=%s @ %s',
-            ex, book[0:3], round(vol,2), book[4:7], round(cost,2), ask_price)
+        log.info('BUY order, ex=%s, pair=%s, %s=%s, %s=%s @ %s',
+            ex, pair, pair[0], round(vol,2), pair[1], round(cost,2), ask_price)
 
     #--------------------------------------------------------------------------
     def sell_market_order(self, buy_trade, bid, bid_vol):
@@ -156,21 +81,16 @@ class SimBot():
             remaining = buy_trade['volume']
         sell_vol = min(remaining, bid_vol)
         amount = round(bid*sell_vol,2)
+
         simex.exec_trade(
-            self._id, buy_trade['ex'], buy_trade['book'], 'sell', bid,
+            self._id, buy_trade['ex'], buy_trade['pair'], 'sell', bid,
             sell_vol, amount, hold_id=buy_trade['holding_id'])
 
         log.info('SELL order, ex=%s, %s=%s, %s=%s @ %s',
-            buy_trade['ex'], buy_trade['book'][0:3], round(sell_vol,2),
-            buy_trade['book'][4:7], round(amount,2), bid)
+            buy_trade['ex'], buy_trade['pair'][0], round(sell_vol,2),
+            buy_trade['pair'][1], round(amount,2), bid)
 
         return buy_trade
-
-    #--------------------------------------------------------------------------
-    def update(self):
-        self.eval_buy_positions()
-        self.eval_sell_positions()
-        self.eval_arbitrage()
 
     #--------------------------------------------------------------------------
     def eval_sell_positions(self):
@@ -180,13 +100,12 @@ class SimBot():
 
         for hold_id in bot['open_holdings']:
             buy_trade = g.db['sim_actions'].find_one({'holding_id':hold_id,'action':'buy'})
-
-            ex = get_ex(exch=buy_trade['ex'], pair=buy_trade['book'])[0]
-            bid = simbooks.get_bid(ex['name'], ex['book'])
-            margin = round(bid['price'] - buy_trade['price'], 2)
+            buy_trade['pair'] = tuple(buy_trade['pair'])
+            bid = simbooks.get_bid(buy_trade['ex'], buy_trade['pair'])
+            margin = round(bid[0] - buy_trade['price'], 2)
 
             if margin >= self.rules['sell_margin']:
-                self.sell_market_order(buy_trade, bid['price'], bid['volume'])
+                self.sell_market_order(buy_trade, bid[0], bid[1])
                 smart_emit('updateBot', None)
 
     #--------------------------------------------------------------------------
@@ -194,63 +113,65 @@ class SimBot():
         """TODO: if market average has moved and no buys for > 1 hour,
         make small buy to reset last buy price
         """
-        for ex in get_ex():
-            BUY = False
-            ask = simbooks.get_ask(ex['name'], ex['book'])
+        for conf in ex_confs():
+            for pair in conf['PAIRS']:
+                BUY=False
 
-            #holdings = self.holdings(exch=ex['name'], pair=ex['book'])
-            #if len(holdings) == 0:
-            #    BUY = True
-            #else:
-            # Buy Indicator A: price dropped
-            #recent_trade = holdings[-1]['trades'][0]
-            #buy_margin = round(ask['price'] - recent_trade['price'],2)
-            #if buy_margin <= self.rules['buy_margin']:
-            #    BUY = True
-
-            # Buy Indicator B: low ask inertia
-            book_ind = indicators.from_orders(ex['name'], ex['book'])
-
-            if book_ind:
-                if book_ind['ask_inertia'] > 0 and book_ind['ask_inertia'] < 15:
-                    log.debug('ask_inertia=%s, book=%s, ex=%s. buying',
-                    book_ind['ask_inertia'], ex['book'], ex['name'])
+                prev = g.db['sim_actions'].find(
+                    {'bot_id':self._id, 'ex':conf['NAME'], 'pair':pair, 'side':'buy'}).sort('date',-1).limit(1)
+                if prev.count() == 0:
+                    log.debug('no holdings for pair=%s. buying', pair)
                     BUY = True
 
-            if BUY:
-                holding = self.buy_market_order(
-                    ex['name'],
-                    ex['book'],
-                    ask['price'],
-                    ask['volume'])
-                smart_emit('updateBot', None)
+                #else:
+                # Buy Indicator A: price dropped
+                #recent_trade = holdings[-1]['trades'][0]
+                #buy_margin = round(ask['price'] - recent_trade['price'],2)
+                #if buy_margin <= self.rules['buy_margin']:
+                #    BUY = True
+
+                # Buy Indicator B: low ask inertia
+                book_ind = indicators.from_orders(conf['NAME'], pair)
+
+                if book_ind:
+                    if book_ind['ask_inertia'] > 0 and book_ind['ask_inertia'] < 15:
+                        log.debug('ask_inertia=%s, book=%s, ex=%s. buying',
+                        book_ind['ask_inertia'], ex['book'], ex['name'])
+                        BUY = True
+
+                if BUY:
+                    ask = simbooks.get_ask(conf['NAME'], pair)
+                    holding = self.buy_market_order(conf['NAME'], pair, ask[0], ask[1])
+                    smart_emit('updateBot', None)
 
     #--------------------------------------------------------------------------
     def eval_arbitrage(self):
         """Make cross-exchange trade if bid/ask ratio > 1.
         """
+
+        return
         r = g.db['sim_books'].aggregate([
-            {'$group':{'_id':'$book', 'min_ask':{'$min':'$ask'}, 'max_bid':{'$max':'$bid'}}}])
+            {'$group':{'_id':'$pair', 'min_ask':{'$min':'$ask'}, 'max_bid':{'$max':'$bid'}}}])
 
         for book in list(r):
             if book['max_bid']/book['min_ask'] <= 1:
                 continue
 
-            buy_ex = g.db['sim_books'].find_one({'ask':book['min_ask']})
-            sell_ex = g.db['sim_books'].find_one({'bid':book['max_bid']})
-            pair = buy_ex['book']
+            buy_simbook = g.db['sim_books'].find_one({'ask':book['min_ask']})
+            sell_simbook = g.db['sim_books'].find_one({'bid':book['max_bid']})
+            pair = buy_simbook['pair']
             # Match order volume for cross-exchange trade
             vol = min(
-                simbooks.get_ask(buy_ex['name'], pair)['volume'],
-                simbooks.get_bid(sell_ex['name'], pair)['volume']
+                simbooks.get_ask(buy_simbook['ex'], pair)[1],
+                simbooks.get_bid(sell_simbook['ex'], pair)[1]
             )
             if vol == 0:
                 continue
-            buy_p = buy_ex['asks'][0]['price']
-            sell_p = sell_ex['bids'][0]['price']
+            buy_p = buy_simbook['asks'][0]['price']
+            sell_p = sell_simbook['bids'][0]['price']
             # Calculate net earning
-            buy_f = self.calc_fee(buy_ex['name'], pair, buy_p, vol)
-            sell_f = self.calc_fee(sell_ex['name'], pair, sell_p, vol)
+            buy_f = self.calc_fee(buy_simbook['ex'], pair, buy_p, vol)
+            sell_f = self.calc_fee(sell_simbook['ex'], pair, sell_p, vol)
             pdiff = round(book['max_bid'] - book['min_ask'],2)
             earn = round(pdiff*vol,2)
             fees = round(buy_f+sell_f,2)
@@ -260,11 +181,11 @@ class SimBot():
                 continue
 
             log.debug('%s=>%s pdiff=%s, v=%s, earn=%s, fees=%s, net_earn=%s',
-                buy_ex['name'], sell_ex['name'], pdiff, vol, earn, fees, net_earn)
+                buy_simbook['ex'], sell_simbook['ex'], pdiff, vol, earn, fees, net_earn)
 
             if net_earn >= 100:
                 msg = '%s earnings arbitrage window! %s=>%s' %(
-                    net_earn, buy_ex['name'], sell_ex['name'])
+                    net_earn, buy_simbook['ex'], sell_simbook['ex'])
                 log.warning(msg)
                 compose(msg, current_app.config['SMS_ALERT_NUMBER'])
 
@@ -274,14 +195,14 @@ class SimBot():
             #   ex-B: BTC >= vol
 
             holding = self.buy_market_order(
-                buy_ex['name'],
+                buy_simbook['ex'],
                 pair,
                 buy_p,
                 vol,
                 vol_cap=False)
 
             # Transfer holding
-            holding['exchange'] = sell_ex['name']
+            holding['exchange'] = sell_simbook['ex']
 
             self.sell_market_order(
                 holding,
@@ -350,10 +271,12 @@ class SimBot():
 
     #--------------------------------------------------------------------------
     def stats(self, exch=None):
+        from app.main import tickers
+        return None
         n_open = len(self.holdings(status='open'))
         op_bal = self.balance(status='open')
-        op_btc_val = op_bal['btc'] * get_ex(pair='btc_cad')[0]['bid']
-        op_eth_val = op_bal['eth'] * get_ex(pair='eth_cad')[0]['bid']
+        op_btc_val = op_bal['btc'] * tickers.summary('QuadrigaCX', ('btc','cad'))
+        op_eth_val = op_bal['eth'] * tickers.summary('QuadrigaCX', ('eth','cad'))
 
         n_closed = len(self.holdings(status='closed'))
         cl_bal = self.balance(status='closed')

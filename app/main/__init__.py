@@ -9,15 +9,19 @@ main = Blueprint(
     static_url_path='/static/main',
     template_folder='templates')
 
-def exch_conf(name):
-    for exchange in EXCHANGES:
-        if exchange['NAME'] == name:
-            return exchange
+def ex_confs(name=None, api_only=True):
+    if name is not None:
+        for exchange in EXCHANGES:
+            if exchange['NAME'] == name:
+                return exchange
 
-def pair_conf(name):
-    for pair in PAIRS:
-        if pair['NAME'] == name:
-            return pair
+    if api_only == True:
+        return [n for n in EXCHANGES if n['API_ENABLED'] == True]
+    else:
+        return EXCHANGES
+
+def pair_conf(pair):
+    return PAIRS[pair]
 
 from . import views
 from . import endpoints

@@ -5,7 +5,7 @@ from pprint import pprint
 from logging import getLogger
 from flask import g
 from app.lib.timer import Timer
-from app.main import exch_conf
+from app.main import ex_confs
 from . import simbooks
 log = getLogger(__name__)
 
@@ -20,7 +20,7 @@ def update(base, trade):
 
 #-------------------------------------------------------------------------------
 def update_order_book(book_name, base, trade):
-    conf = exch_conf('Coinsquare')
+    conf = ex_confs(name='Coinsquare')
     t1 = Timer()
     try:
         data = requests.get(conf['BOOK_URL'] % (base.upper(),trade.upper()))

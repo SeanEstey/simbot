@@ -16,6 +16,7 @@ def update_ex_data(self, **rest):
     """Save public trade/orderbook data, update simulation orderbooks. Called
     every 10 sec.
     """
+    pub_data.save_tickers()
     pub_data.save_trades()
     pub_data.save_orderbook()
     simbooks.merge_all()

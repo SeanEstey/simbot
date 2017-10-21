@@ -12,12 +12,12 @@ def update_time_series():
     utcnow = datetime.now()+timedelta(hours=6)
     build_series(
         'QuadrigaCX',
-        'btc_cad',
+        ('btc','cad'),
         utcnow - timedelta(days=1),
         utcnow)
 
 #---------------------------------------------------------------
-def build_series(ex, book, start, end):
+def build_series(ex, pair, start, end):
     """Calculate key indicators for 10 min periods in given date range
     for given exchange/book.
     """
@@ -26,11 +26,11 @@ def build_series(ex, book, start, end):
     n_mod = n_upsert = 0
 
     while p_start <= end:
-        order_ind = from_orders(ex, book, p_start, p_end)
-        trade_ind = from_trades(ex, book, p_start, p_end)
+        order_ind = from_orders(ex, pair, p_start, p_end)
+        trade_ind = from_trades(ex, pair, p_start, p_end)
 
         r = g.db['chart_series'].update_one(
-            {'ex':ex,'book':book,'start':p_start,'end':p_end},
+            {'ex':ex,'pair':pair,'start':p_start,'end':p_end},
             {'$set':{
                 'avg.price': round(trade_ind.get('price',0.0),2),
                 'avg.bid_price':round(order_ind.get('bid_price',0.0),2),
@@ -54,7 +54,7 @@ def build_series(ex, book, start, end):
     log.debug('indicators modified=%s, created=%s', n_mod, n_upsert)
 
 #---------------------------------------------------------------
-def from_trades(ex, book, start, end):
+def from_trades(ex, pair, start, end):
     ind = {
         'price':[],
         'buy_vol':0.0,
@@ -64,7 +64,7 @@ def from_trades(ex, book, start, end):
         'buy_rate':0
     }
     trades = g.db['pub_trades'].find({
-        'ex':ex, 'book':book, 'date':{'$gte':start, '$lt':end}
+        'ex':ex, 'pair':pair, 'date':{'$gte':start, '$lt':end}
     })
     for t in trades:
         ind['price'].append(t['price'])
@@ -80,7 +80,7 @@ def from_trades(ex, book, start, end):
     return ind
 
 #---------------------------------------------------------------
-def from_orders(ex, book, start=None, end=None):
+def from_orders(ex, pair, start=None, end=None):
     ind = {
         'bid_price':[],
         'bid_vol':[],
@@ -91,9 +91,9 @@ def from_orders(ex, book, start=None, end=None):
     }
 
     if start is None and end is None:
-        docs = g.db['pub_books'].find({'ex':ex, 'book':book}).sort('date',-1).limit(1)
+        docs = g.db['pub_books'].find({'ex':ex, 'pair':pair}).sort('date',-1).limit(1)
     else:
-        docs = g.db['pub_books'].find({'ex':ex, 'book':book, 'date':{'$gte':start, '$lt':end}})
+        docs = g.db['pub_books'].find({'ex':ex, 'pair':pair, 'date':{'$gte':start, '$lt':end}})
 
     if docs.count() < 1:
         for k in ind:

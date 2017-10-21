@@ -2,6 +2,7 @@
 from logging import getLogger
 from flask import g
 from app.lib.timer import Timer
+from app.main import ex_confs
 log = getLogger(__name__)
 
 EX = ['QuadrigaCX']
@@ -9,47 +10,43 @@ BOOKS = ['btc_cad', 'eth_cad']
 
 #-------------------------------------------------------------------------------
 def merge_all():
-    for ex in EX:
-        for book in BOOKS:
-            docs = g.db['pub_books'].find({'ex':ex, 'book':book}).sort('date',-1).limit(1)
-            doc = list(docs)[0]
-            orders = {'bids':doc['bids'], 'asks':doc['asks']}
-            merge(orders, ex, book, book[4:7], book[0:3], 0)
+    """Merge updated public order book data with simulation order books.
+    """
+    for conf in ex_confs():
+        for pair in conf['PAIRS']:
+            pub_book = list(
+                g.db['pub_books'].find({'ex':conf['NAME'], 'pair':pair}).sort('date',-1).limit(1)
+            )[0]
+
+            merge(conf['NAME'], pair, pub_book['bids'], pub_book['asks'])
 
 #-------------------------------------------------------------------------------
-def get_bid(exch, pair):
+def get_bid(ex, pair):
     """Find the highest bid price/volume not consumed by simulation.
+    :pair: ('btc','cad') tuple
     """
-    bids = g.db['sim_books'].find_one({'name':exch, 'book':pair})['bids']
+    bids = g.db['sim_books'].find_one({'ex':ex, 'pair':pair})['bids']
     idx=0
     while idx<len(bids):
-        bid = bids[idx]
-        vol_remain = bid['original'] - bid.get('bot_consumed',0)
-        if vol_remain > 0:
-            return {'price':bid['price'], 'volume':vol_remain}
+        if bids[idx][1] > 0:
+            return bids[idx]
         idx+=1
     return None
 
-def fill_limit_order(ex, pair):
-    pass
-
-
 #-------------------------------------------------------------------------------
-def get_ask(exch, pair):
+def get_ask(ex, pair):
     """Find the lowest ask price/vol not consumed by simulation.
     """
-    asks = g.db['sim_books'].find_one({'name':exch, 'book':pair})['asks']
+    asks = g.db['sim_books'].find_one({'ex':ex, 'pair':pair})['asks']
     idx=0
     while idx<len(asks):
-        ask = asks[idx]
-        vol_remain = ask['original'] - ask.get('bot_consumed',0)
-        if vol_remain > 0:
-            return {'price':ask['price'], 'volume':vol_remain}
+        if asks[idx][1] > 0:
+            return asks[idx]
         idx+=1
     return None
 
 #-------------------------------------------------------------------------------
-def update(ex_name, pair, section, bot_id, vol_consumed):
+def update(ex, pair, section, bot_id, vol):
     """Update order book w/ simulated order.
     TODO: add support for consuming multiple orders.
 
@@ -58,75 +55,56 @@ def update(ex_name, pair, section, bot_id, vol_consumed):
     :section: book section (str)
         'bids' or 'asks'
     """
-    ex = g.db['sim_books'].find_one({'name':ex_name, 'book':pair})
-    order = ex[section][0]
-
-    if order.get('bot_consumed'):
-        order['bot_consumed'] += vol_consumed
-    else:
-        order['bot_consumed'] = vol_consumed
-
-    order['bot_id'] = bot_id
-    ex[section][0] = order
-
+    values = g.db['sim_books'].find_one({'ex':ex, 'pair':pair})[section]
+    values[0][1] -= vol
     g.db['sim_books'].update_one(
-        {'_id':ex['_id']},
-        {'$set':{
-            section: ex[section]
-        }}
+        {'ex':ex, 'pair':pair},
+        {'$set':{section:values}}
     )
 
 #-------------------------------------------------------------------------------
-def merge(orders, ex_name, book_name, base, trade, spread):
+def merge(ex, pair, bids, asks):
     """Merge real order books w/ simulated books.
 
     :orders: sorted order book (dict).
         {'bids':[], 'asks':[]}
     """
     n_matches = 0
-    ex = g.db['sim_books'].find_one({'name':ex_name, 'book':book_name})
-    new_orders = {'asks':[], 'bids':[]}
+    orders = {'asks':asks, 'bids':bids}
+    merged = {'asks':[], 'bids':[]}
 
-    for section in ['bids', 'asks']:
-        for order in orders[section]:
+    sim_book = g.db['sim_books'].find_one({'ex':ex, 'pair':pair})
+
+    if sim_book is None:
+        g.db['sim_books'].insert_one({'ex':ex, 'pair':pair, 'bids':bids, 'asks':asks})
+        return
+
+    # pair_name is defined ('trade','base')
+    # but ask/bids are defined ('base', 'trade')
+
+    for k in orders:
+        for order in orders[k]:
             b_match = False
-            for db_order in ex[section]:
-                if db_order['price'] == order[0] and db_order.get('bot_consumed'):
-                    # Assume order is new if volume increase at matching order price.
-                    if order[1] > db_order['volume']:
-                        continue
-                    # Merge updated order volume w/ volume consumed by simulation.
-
-                    new_orders[section].append({
-                        'price':db_order['price'],
-                        'bot_consumed':db_order['bot_consumed'],
-                        'bot_id':db_order['bot_id'],
-                        'original':db_order['original'],
-                        'volume':db_order['original']
-                    })
+            for sim_order in sim_book[k]:
+                # If price match, take lowest of the 2 volumes.
+                if sim_order[0] == order[0]:
+                    merged[k].append([order[0], min(order[1], sim_order[1])])
                     b_match = True
                     n_matches += 1
+                    break
             if b_match == False:
-                new_orders[section].append({
-                    'price': order[0],
-                    'volume': order[1],
-                    'original': order[1]
-                })
-    #log.debug('books.merge: %s modified orders syncd to new order_books', n_matches)
-    #log.debug(new_orders)
+                merged[k].append([order[0], order[1]])
 
     r = g.db['sim_books'].update_one(
-        {'name':ex_name, 'book':book_name},
+        {'ex':ex, 'pair':pair},
         {'$set':{
-            'name':ex_name,
-            'base':base,
-            'trade':trade,
-            'book':book_name,
-            'bids':new_orders['bids'],
-            'asks':new_orders['asks'],
-            'bid': new_orders['bids'][0]['price'],
-            'ask': new_orders['asks'][0]['price'],
-            'spread':spread
+            'ex':ex,
+            'pair':pair,
+            'bids':merged['bids'],
+            'asks':merged['asks'],
         }},
         True
     )
+
+    #log.debug('books.merge: %s modified orders syncd to new order_books', n_matches)
+    #log.debug(new_orders)
