@@ -8,7 +8,7 @@ from . import simbooks
 log = logging.getLogger(__name__)
 
 #-------------------------------------------------------------------------------
-def exec_trade(bot_id, ex, book, side, price, vol, cost, hold_id=None):
+def exec_trade(bot_id, ex, book, side, price, vol, amount, hold_id=None):
     """Create new bot trade. Create new holding if BUY, update/close holding if SELL.
     :book: <str> of asset pair.
     :vol, cost: <float> volume traded of left/right-side book assets. vectored.
@@ -18,45 +18,49 @@ def exec_trade(bot_id, ex, book, side, price, vol, cost, hold_id=None):
     """
     # Update sim_books and sim_balances
     fee_pct = exch_conf(ex)['TRADE_FEE'][book]
-    fee = fee_pct * abs(cost)
+    fee = fee_pct * abs(amount)
     g.db['sim_balances'].update_one(
-        {'bot_id':self._id, 'ex':ex},
+        {'bot_id':bot_id, 'ex':ex},
         {'$inc':{
             book[0:3] : vol,
-            book[4:7] : (cost-fee)
+            book[4:7] : (amount-fee)
         }}
     )
-    simbooks.update(ex, book, side, bot_id, vol)
+    simbooks.update(ex, book, 'asks' if side=='buy' else 'bids', bot_id, vol)
+
+    status = 'open'
 
     # New holding
     if side == 'buy':
-        g.db['sim_bots'].update_one(
-            {'bot_id':bot_id},
-            {'$push':{'open_holdings':trade['holding_id']}}
+        hold_id=ObjectId()
+        r=g.db['sim_bots'].update_one(
+            {'_id':bot_id},
+            {'$push':{'open_holdings':hold_id}}
         )
-        status = 'open'
     # Update holding. Check if closed
     elif side == 'sell':
         bought = g.db['sim_actions'].find_one(
-            {'holding_id':holding_id,'action':'buy'}
+            {'holding_id':hold_id,'action':'buy'}
         )
         sold = list(g.db['sim_actions'].aggregate([
-            {'$match':{'holding_id':holding_id,'action':'sell'}},
+            {'$match':{'holding_id':hold_id,'action':'sell'}},
             {'$group':{'_id':'', 'volume':{'$sum':'$volume'}}}
-        ]))[0]
-        if bought['volume']-sold['volume'] == 0:
-            status = 'closed'
-            bot = g.db['sim_bots'].find_one({'_id':bot_id})
-            # Move hold_id from open_holdings to closed_holdings
-            g.db['sim_bots'].update_one(
-                {'_id':bot_id},
-                {'$set':{
-                    'open_holdings': [n for n in bot['open_holdings'] if n!=hold_id]
-                }},
-                {'$push':{'open_holdings':hold_id}}
-            )
-        else:
-            status = 'open'
+        ]))
+        log.debug('hold_id=%s, bought=%s, sold=%s', hold_id, bought, sold)
+        if len(sold) > 0:
+            if bought['volume']-sold[0]['volume'] == 0:
+                log.info('holding is closed!')
+                status = 'closed'
+                bot = g.db['sim_bots'].find_one({'_id':bot_id})
+                # Move hold_id from open_holdings to closed_holdings
+                g.db['sim_bots'].update_one(
+                    {'_id':bot_id},
+                    {
+                        '$set':{'open_holdings': [n for n in bot['open_holdings'] if n!=hold_id]},
+                        '$push':{'closed_holdings':hold_id}
+                    }
+                )
+                g.db['sim_actions'].update_many({'holding_id':hold_id},{'$set':{'status':'closed'}})
 
     g.db['sim_actions'].insert_one({
         'date':datetime.utcnow(),
@@ -65,10 +69,10 @@ def exec_trade(bot_id, ex, book, side, price, vol, cost, hold_id=None):
         'ex': ex,
         'book': book,
         'price': price,
-        'volume': vol,
-        'cost':cost,
+        'volume': abs(vol),
+        'amount':abs(amount),
         'fee': fee,
-        'holding_id': ObjectId() if side=='buy' else hold_id,
+        'holding_id': hold_id,
         'status': status
     })
 

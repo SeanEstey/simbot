@@ -17,7 +17,7 @@ CLIENT_ID=64288
 #---------------------------------------------------------------
 def save_trades():
     for ex in EX:
-        api = g.db['bots'].find_one({'name':API_BOT_NAME})['api'][0]
+        api = g.db['sim_bots'].find_one({'name':API_BOT_NAME})['api'][0]
         client = QuadrigaClient(api_key=api['key'], api_secret=api['secret'], client_id=CLIENT_ID)
 
         for book in BOOKS:
@@ -49,7 +49,7 @@ def save_trades():
 #---------------------------------------------------------------
 def save_orderbook():
     for ex in EX:
-        api = g.db['bots'].find_one({'name':API_BOT_NAME})['api'][0]
+        api = g.db['sim_bots'].find_one({'name':API_BOT_NAME})['api'][0]
         client = QuadrigaClient(api_key=api['key'], api_secret=api['secret'], client_id=CLIENT_ID)
 
         for book in BOOKS:

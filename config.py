@@ -59,7 +59,8 @@ PAIRS = [
     {
         'NAME': 'btc_cad',
         'MAX_VOL': 0.15,
-        'MIN_ARBIT_RATE': 50
+        'MIN_ARBIT_RATE': 50,
+        'ASK_INERTIA':15
     },
     {
         'NAME': 'eth_cad',
