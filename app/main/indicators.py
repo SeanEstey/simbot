@@ -6,14 +6,14 @@ from logging import getLogger
 log = getLogger(__name__)
 
 #---------------------------------------------------------------
-def update_time_series():
+def update_time_series(ndays=None, nhours=None):
     """Time series is for client chart data.
     """
     utcnow = datetime.now()+timedelta(hours=6)
     build_series(
         'QuadrigaCX',
         ('btc','cad'),
-        utcnow - timedelta(days=1),
+        utcnow - timedelta(days=ndays or 0, hours=nhours or 1),
         utcnow)
 
 #---------------------------------------------------------------
@@ -21,7 +21,7 @@ def build_series(ex, pair, start, end):
     """Calculate key indicators for 10 min periods in given date range
     for given exchange/book.
     """
-    p_start = p_end = datetime.combine(start.date(), time(start.hour, int(start.minute/10*10)))
+    p_start = p_end = datetime.combine(start.date(), time(start.hour, round(start.minute,-1)))
     p_end += timedelta(minutes=10)
     n_mod = n_upsert = 0
 

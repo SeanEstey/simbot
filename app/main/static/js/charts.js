@@ -69,54 +69,57 @@ Chart.prototype.rmvSeries = function(idx) {
 
 //------------------------------------------------------------------------------
 Chart.prototype.resample = function(time_lbl, data) {
-    console.log('presample data. length='+data.length);
-    //var _data = data.splice(0,data.length);
-    console.log(data);
-
-    var conf = PERIODS[time_lbl];
-    var duration = conf['duration'];
-    var step_size = duration / MS_10_MIN;
+    var n_subsamples = PERIODS[time_lbl]['duration'] / MS_10_MIN;
     var resampled_data = []
-    var new_length = data.length / step_size;
+    var n_resample_periods = data.length / n_subsamples;
 
-    for(var i=0; i<new_length-1; i++) {
-        var splice_list = data.splice(0,step_size);
-        var resampled = splice_list[step_size-1];
-        console.log('splice_list.length='+splice_list.length+',data.length='+data.length);
+    console.log(format('Resampling data, Period duration=[%s to %s], Num periods=[%s to %s]',
+        MS_10_MIN, PERIODS[time_lbl]['duration'], data.length, n_resample_periods));
 
-        for(var j=0; j<splice_list.length-1; j++) {
-            for(var k in splice_list[j]['avg']) {
-                resampled['avg'][k] += splice_list[j]['avg'][k];
+    for(var i=0; i<n_resample_periods-1; i++) {
+        var subsamples = data.splice(0,n_subsamples);
+
+        var sample = {
+            ex: subsamples[0]['ex'],
+            pair: subsamples[0]['pair'],
+            date: subsamples[n_subsamples-1]['end']['$date'],
+            start: new Date(subsamples[0]['start']['$date']),
+            end: new Date(subsamples[n_subsamples-1]['end']['$date'])
+        };
+        for(var k in subsamples[0]['avg'])
+            sample[k] = [];
+        for(var k in subsamples[0]['sum'])
+            sample[k] = 0;
+        
+        for(var j=0; j<subsamples.length; j++) {
+            for(var k in subsamples[j]['avg']) {
+                //console.log(format('avg k=%s, val=%s', k, subsamples[j]['avg'][k]));
+                if(subsamples[j]['avg'][k])
+                    sample[k].push(subsamples[j]['avg'][k]);
             }
-            for(var k in splice_list[j]['sum']) {
-                resampled['sum'][k] += splice_list[j]['sum'][k];
-            }
+
+            for(var k in subsamples[j]['sum'])
+                sample[k] += subsamples[j]['sum'][k];
         }
 
-        for(var k in resampled['avg']) {
-            resampled['avg'][k] = resampled['avg'][k] / splice_list.length;
+        // Sum up arrays of avg values, reduce to number.
+        for(var k in subsamples[0]['avg']) {
+            var len = sample[k].length;
+            var sum = sample[k].reduce(function(a,b){return a+b},0);
+            var avg = sum / len;
+            sample[k] = avg;
+            //console.log(format('k=%s, sum=%s, length=%s, avg=%s', k, sum, len, avg));
         }
 
-        for(var k in resampled['avg']) {
-            resampled[k] = resampled['avg'][k];
-        }
-        for(var k in resampled['sum']) {
-            resampled[k] = resampled['sum'][k];
-        }
+        console.log(format('Period #%s, Date=%s, Timespan=[%s to %s], Price=%s',
+            (i+1), sample['start'].toLocaleDateString(), sample['start'].toLocaleTimeString(),
+            sample['end'].toLocaleTimeString()), sample['price']);
+        
+        console.log(JSON.stringify(sample));
 
-        delete resampled['avg'];
-        delete resampled['sum'];
-        delete resampled['_id'];
-        resampled['date'] = resampled['start']['$date'];
-        resampled['start_date'] = new Date(resampled['start']['$date']).toLocaleString();
-        resampled['end_date'] = new Date(resampled['end']['$date']).toLocaleString();
-        delete resampled['start'];
-        delete resampled['end'];
-    
-        resampled_data.push(resampled);
+        resampled_data.push(sample);
     }
 
-    console.log('resampled data...');
     console.log(resampled_data);
     return resampled_data;
 }
@@ -129,10 +132,6 @@ Chart.prototype.combineSeries = function() {
         return;
 
     var data = [];
-    var period = PERIODS[this.series[0]['time_lbl']];
-    var duration = period['duration'];
-    var n_periods = period['n_periods'];
-    var step_idx = duration / MS_10_MIN;
 
     // Create datapoints by combining series data for each time period.
     for(var i=0; i<this.series[0]['data'].length; i++) { 
@@ -145,6 +144,7 @@ Chart.prototype.combineSeries = function() {
         data.push(point);
     }
     this.fillDataGaps(data);
+    //console.log(JSON.stringify(data));
     return data;
 }
 
@@ -299,7 +299,7 @@ Chart.prototype.draw = function() {
         pointSize: 0,
         pointStrokeColors: ['black'],
         pointFillColors: ['white'],
-        lineColors: ['#5cb85c','#136d8d', 'red'],
+        lineColors: ['#5cb85c','red', '#136d8d', 'pink'],
         fillOpacity: 0.3,
         dateFormat: function(x) { return new Date(x).toLocaleString()},
         hideHover: 'auto',
@@ -314,7 +314,7 @@ Chart.prototype.draw = function() {
     else if(this.series[0]['type'] == 'area')
         this.morrisObj = Morris.Area(options);
 
-    this.resize();
+    //this.resize();
 }
 
 //------------------------------------------------------------------------------

@@ -31,7 +31,8 @@ def update_bots(self, **rest):
 
 #-------------------------------------------------------------------------------
 @celery.task(bind=True)
-def update_time_series_indicators(self, **rest):
+def update_client_indicators(self, ndays=None, nhours=None, **rest):
     """Update chart data. Called every 10 min.
     """
-    indicators.update_time_series()
+    indicators.update_time_series(ndays=ndays, nhours=nhours)
+

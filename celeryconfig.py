@@ -17,8 +17,8 @@ beat_schedule = {
         'task':'app.main.tasks.update_bots',
         'schedule': 30.0
     },
-    'update_time_series_indicators': {
-        'task':'app.main.tasks.update_time_series_indicators',
+    'update_client_indicators': {
+        'task':'app.main.tasks.update_client_indicators',
         'schedule': 600.0
     }
 }

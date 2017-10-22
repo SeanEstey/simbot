@@ -9,6 +9,12 @@ from . import main
 from . import quadcx, coinsquare
 from .simbot import SimBot
 
+@main.route('/test/series', methods=['GET'])
+def _test_series():
+    from app.main.tasks import update_client_indicators
+    update_client_indicators.delay(ndays=7)
+    return 'ok'
+
 @main.route('/indicators/get', methods=['POST'])
 def _get_ind():
     get = request.form.get
