@@ -57,6 +57,33 @@ function initEventHandlers() {
 //------------------------------------------------------------------------------
 function showMarketChart() {
     marketChart = new Chart('chart-contr', 'Area');
+    $('input[name="QuadrigaCX"]').click();
+
+    var data = null;
+    var tspan = marketChart.getTimespan('1d', units='s');
+    $.ajax({
+        type: 'POST',
+        url: BASE_URL + '/indicators/get',
+        data:{
+            ex:'QuadrigaCX',
+            asset:'btc',
+            since:tspan[0] + (3600*6), // convert to UTC
+            until:tspan[1] + (3600*6) // convert to UTC
+        },
+        async:true,
+        context: this,
+        success:function(json){ 
+            console.log(json);
+            var raw = JSON.parse(json);
+            console.log(raw);
+            var resampled = marketChart.resample('1d', raw);
+            marketChart.addSeries(resampled,
+                {ex:'QuadrigaCX', asset:'btc', label:'price', ykey:'price', type:'area',
+                decimals:2, time_lbl:'1d'});
+        }
+    });
+
+    /*
     $('#markets input[type="checkbox"]').change(function() {
         var time_lbl = $('#markets select[name="time_lbl"]').val();
         var asset = $('#markets select[name="asset"]').val();
@@ -87,7 +114,8 @@ function showMarketChart() {
                 idx);
         }
     });
-    $('input[name="QuadrigaCX"]').click();
+    */
+
     $(window).resize(function(){
         marketChart.resize();
     })
@@ -95,6 +123,9 @@ function showMarketChart() {
 
 //------------------------------------------------------------------------------
 function showBotSummary() {
+
+    return;
+
     api_call('/stats/get',
         null,
         function(response){
@@ -112,6 +143,8 @@ function showBotSummary() {
 
 //------------------------------------------------------------------------------
 function showExchTickers() {
+    return;
+
     api_call('/tickers/get',
         null,
         function(response){
@@ -198,7 +231,7 @@ function showHoldingsTable() {
                 formatData()
             );
             applyCustomization(TBL_ID);
-            calcSimDuration();
+            //calcSimDuration();
         });
 }
 

@@ -15,7 +15,7 @@ def _get_ind():
     series = list(
         g.db['chart_series'].find({
             'ex':get('ex'),
-            'book':get('asset')+'_cad',
+            'pair':(get('asset'), 'cad'),
             'start':{'$gte':datetime.fromtimestamp(int(get('since')))}
         }).sort('start',1)
     )
@@ -28,9 +28,8 @@ def get_earnings():
 
 @main.route('/holdings/get', methods=['POST'])
 def get_holdings():
-    gary = SimBot('Terry')
-    holdings = gary.holdings()
-    return dumps(holdings)
+    bot = SimBot('Terry')
+    return dumps(bot.holdings())
 
 @main.route('/tickers/get', methods=['POST'])
 def get_tickers():

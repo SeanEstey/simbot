@@ -1,21 +1,26 @@
 /* datatable.js */
+nformat = Sugar.Number.format;
+
+function sformat(value, symbol, decimals) {
+    return value ? format('$%s', Sugar.Number.format(value, decimals)) : null;
+}
 
 // Column definitions for holdings datatable
 gColumnDefs = [
     {
         column: {title:'Timestamp'},
         columnDef: { targets:0, visible:false},
-        data: { k:'_id', sub_k:'$oid', value:function(oid) { return objectIdToTime(oid) } }
+        data: { k:'open_date', sub_k:'$date' }
     },
     {
-        column: { title:'Datetime&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'},
+        column: { title:'Open Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'},
         columnDef: { targets:1 },
-        data: { k:'_id', sub_k:'$oid', value:function(oid){ return objectIdToDate(oid).toLocaleString() } }
+        data: { k:'open_date', sub_k:'$date', value:function(d){ return new Date(d).toLocaleString() } }
     },
     {
         column: { title:'Exchange' },
         columnDef:{ },
-        data: { k:'exchange' }
+        data: { k:'ex' }
     },
     {
         column: { title:'Pair' },
@@ -25,69 +30,57 @@ gColumnDefs = [
     {
         column: { title:'Status' },
         columnDef:{ },
-        data: { k:'status', value:function(v){ return v.toTitleCase() } }
-    },
-    {
-        column: { title:'Trades' },
-        columnDef: { },
-        data: { k:'trades', value:function(v){ return v.length } }
+        data: { k:'status', value:function(x){ return x.toTitleCase() } }
     },
     {
         column: { title:'Buy Price' },
         columnDef: { },
-        data: { k:'trades', sub_k:'0', value:function(v){ return '$'+num_format(v['price'],0) } }
+        data: { k:'buy_price', value:function(x){ return format('$%s', nformat(x,0)) } }  
     },
     {
         column: { title:'Buy Volume' },
         columnDef: { },
-        data: { k:'trades', value:function(v){ return v[0]['volume'][0]} }
+        data: { k:'volume', value:function(x){ return nformat(x,5) } }
     },
     {
-        column: { title:'Cost' },
+        column: { title:'Buy Cost' },
         columnDef: { },
-        data: { k:'trades', value:function(v){ return '$'+v[0]['volume'][1]*-1 } }
+        data: { k:'cost', value:function(x){ return format('$%s', nformat(x,2)) } }
     },
     {
         column: { title:'Sell Price (Avg)' },
         columnDef: { },
-        data: { k:'trades', value:function(v){ return v.length>1 ?
-        '$'+num_format(v[v.length-1]['price'],0) : '' } }
+        data: { k:'sell_price', value:function(x){ return sformat(x,'$',2) } }
     },
     {
-        column: { title:'Balance' },
+        column: { title:'Volume Sold' },
         columnDef: { },
-        data: { k:'trades', value:function(v) {
-            var vol_bal=0;
-            for(var i=0; i<v.length; i++) {
-                vol_bal+=v[i]['volume'][0];
-            }
-            return num_format(vol_bal,5);
-        } }
+        data: { k:'balance', value:function(x){ return nformat(x,5) } }
     },
     {
         column: { title:'Revenue' },
         columnDef: { },
-        data: { k:'trades', value:function(v) {
-            var rev=0;
-            for(var i=1; i<v.length; i++) {
-                rev+=v[i]['volume'][1];
-            }
-            return '$'+num_format(rev,2);
-        } }
+        data: { k:'revenue', value:function(x){ return sformat(x,'$',2) } }
     },
     {
         column: { title:'Fees' },
-        columnDef:{ targets:12, render:function(data, type, row){
-            return data? '$'+num_format(data,2) :'' } 
-        },
-        data: { k:'fees' }
+        columnDef:{ },
+        data: { k:'fees', value:function(x){ return sformat(x,'$',2) } }
     },
     {
         column: { title:'Net Earning' },
-        columnDef:{ targets:13, render:function(data, type, row){
-            return row[4]=='Closed'? '$'+num_format(data[1]-row[12],2) : '' } 
-        },
-        data: { k:'balance'}
+        columnDef:{ },
+        data: { 
+            k:null,
+            value:function(x) {
+                if(x['status'] == 'closed') {
+                    var net_earn = x['revenue'] - x['cost'] + x['fees'];
+                    return sformat(net_earn, '$', 2);
+                } 
+                else
+                    return '';
+            }
+        }
     }
 ];
 
@@ -154,7 +147,9 @@ function formatData() {
             var sub_k = gColumnDefs[j]['data']['sub_k'];
             var val = '';
 
-            if(!sub_k && get(holding, k))
+            if(!k)
+                val = holding;
+            else if(!sub_k && get(holding, k))
                 val = holding[k];
             else if(sub_k && get(holding[k], sub_k))
                 val = holding[k][sub_k];

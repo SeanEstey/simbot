@@ -68,6 +68,60 @@ Chart.prototype.rmvSeries = function(idx) {
 }
 
 //------------------------------------------------------------------------------
+Chart.prototype.resample = function(time_lbl, data) {
+    console.log('presample data. length='+data.length);
+    //var _data = data.splice(0,data.length);
+    console.log(data);
+
+    var conf = PERIODS[time_lbl];
+    var duration = conf['duration'];
+    var step_size = duration / MS_10_MIN;
+    var resampled_data = []
+    var new_length = data.length / step_size;
+
+    for(var i=0; i<new_length-1; i++) {
+        var splice_list = data.splice(0,step_size);
+        var resampled = splice_list[step_size-1];
+        console.log('splice_list.length='+splice_list.length+',data.length='+data.length);
+
+        for(var j=0; j<splice_list.length-1; j++) {
+            for(var k in splice_list[j]['avg']) {
+                resampled['avg'][k] += splice_list[j]['avg'][k];
+            }
+            for(var k in splice_list[j]['sum']) {
+                resampled['sum'][k] += splice_list[j]['sum'][k];
+            }
+        }
+
+        for(var k in resampled['avg']) {
+            resampled['avg'][k] = resampled['avg'][k] / splice_list.length;
+        }
+
+        for(var k in resampled['avg']) {
+            resampled[k] = resampled['avg'][k];
+        }
+        for(var k in resampled['sum']) {
+            resampled[k] = resampled['sum'][k];
+        }
+
+        delete resampled['avg'];
+        delete resampled['sum'];
+        delete resampled['_id'];
+        resampled['date'] = resampled['start']['$date'];
+        resampled['start_date'] = new Date(resampled['start']['$date']).toLocaleString();
+        resampled['end_date'] = new Date(resampled['end']['$date']).toLocaleString();
+        delete resampled['start'];
+        delete resampled['end'];
+    
+        resampled_data.push(resampled);
+    }
+
+    console.log('resampled data...');
+    console.log(resampled_data);
+    return resampled_data;
+}
+
+//------------------------------------------------------------------------------
 Chart.prototype.combineSeries = function() {
     /* Build 1D array for rendering chart.
     */
@@ -81,20 +135,16 @@ Chart.prototype.combineSeries = function() {
     var step_idx = duration / MS_10_MIN;
 
     // Create datapoints by combining series data for each time period.
-    for(var i=0; i<this.series[0]['data'].length; i+=step_idx) {
-        //var start = span[0] + (i*period_len);
-        //var end = start + period_len;
-        var point = { 'time':this.series[0]['data'][i]['start']['$date'] };
+    for(var i=0; i<this.series[0]['data'].length; i++) { 
+        var point = { 'time':this.series[0]['data'][i]['date'] };
 
         for(var j=0; j<this.series.length; j++) {
             var s = this.series[j];
-            //var avg =  this.yValueAvg(s['data'], s['ykey'], start, end);
-            point[s['label']] = s['data'][i][s['ykey']]; //avg;
+            point[s['label']] = s['data'][i][s['ykey']];
         }
         data.push(point);
     }
     this.fillDataGaps(data);
-    console.log(data);
     return data;
 }
 

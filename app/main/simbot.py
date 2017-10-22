@@ -48,9 +48,9 @@ class SimBot():
 
     #--------------------------------------------------------------------------
     def update(self):
-        self.eval_buy_positions()
-        self.eval_sell_positions()
-        self.eval_arbitrage()
+        self.eval_buys()
+        self.eval_sells()
+        self.eval_arb()
 
     #--------------------------------------------------------------------------
     def calc_fee(self, ex, pair, price, vol):
@@ -89,11 +89,10 @@ class SimBot():
         log.info('SELL order, ex=%s, %s=%s, %s=%s @ %s',
             buy_trade['ex'], buy_trade['pair'][0], round(sell_vol,2),
             buy_trade['pair'][1], round(amount,2), bid)
-
         return buy_trade
 
     #--------------------------------------------------------------------------
-    def eval_sell_positions(self):
+    def eval_sells(self):
         """Evaluate each open holding, sell on margin criteria
         """
         bot = g.db['sim_bots'].find_one({'_id':self._id})
@@ -105,11 +104,12 @@ class SimBot():
             margin = round(bid[0] - buy_trade['price'], 2)
 
             if margin >= self.rules['sell_margin']:
-                self.sell_market_order(buy_trade, bid[0], bid[1])
-                smart_emit('updateBot', None)
+                if bid[1] > 0:
+                    self.sell_market_order(buy_trade, bid[0], bid[1])
+                    smart_emit('updateBot', None)
 
     #--------------------------------------------------------------------------
-    def eval_buy_positions(self):
+    def eval_buys(self):
         """TODO: if market average has moved and no buys for > 1 hour,
         make small buy to reset last buy price
         """
@@ -118,7 +118,7 @@ class SimBot():
                 BUY=False
 
                 prev = g.db['sim_actions'].find(
-                    {'bot_id':self._id, 'ex':conf['NAME'], 'pair':pair, 'side':'buy'}).sort('date',-1).limit(1)
+                    {'bot_id':self._id, 'ex':conf['NAME'], 'pair':pair, 'action':'buy'}).sort('date',-1).limit(1)
                 if prev.count() == 0:
                     log.debug('no holdings for pair=%s. buying', pair)
                     BUY = True
@@ -136,19 +136,19 @@ class SimBot():
                 if book_ind:
                     if book_ind['ask_inertia'] > 0 and book_ind['ask_inertia'] < 15:
                         log.debug('ask_inertia=%s, book=%s, ex=%s. buying',
-                        book_ind['ask_inertia'], ex['book'], ex['name'])
+                        book_ind['ask_inertia'], pair, conf['NAME'])
                         BUY = True
 
                 if BUY:
                     ask = simbooks.get_ask(conf['NAME'], pair)
-                    holding = self.buy_market_order(conf['NAME'], pair, ask[0], ask[1])
-                    smart_emit('updateBot', None)
+                    if ask[1] > 0:
+                        holding = self.buy_market_order(conf['NAME'], pair, ask[0], ask[1])
+                        smart_emit('updateBot', None)
 
     #--------------------------------------------------------------------------
-    def eval_arbitrage(self):
+    def eval_arb(self):
         """Make cross-exchange trade if bid/ask ratio > 1.
         """
-
         return
         r = g.db['sim_books'].aggregate([
             {'$group':{'_id':'$pair', 'min_ask':{'$min':'$ask'}, 'max_bid':{'$max':'$bid'}}}])
@@ -216,6 +216,42 @@ class SimBot():
 
             log.info('TRADE complete, net_earn=%s', net_earn)
             smart_emit('updateBot',None)
+
+    #--------------------------------------------------------------------------
+    def holdings(self):
+        from pprint import pformat
+        bot = g.db['sim_bots'].find_one({'_id':self._id})
+        results = []
+
+        for hold_id in bot['open_holdings'] + bot['closed_holdings']:
+            b = g.db['sim_actions'].find_one({'holding_id':hold_id})
+            s = list(g.db['sim_actions'].aggregate([
+                {'$match':{'holding_id':hold_id, 'action':'sell'}},
+                {'$group':{
+                    '_id':'',
+                    'price': {'$avg':'$price'},
+                    'fees': {'$sum':'$fee'},
+                    'volume': {'$sum':'$volume'},
+                    'revenue':{'$sum':'$amount'},
+                    'last_date':{'$max':'$date'}
+                }}
+            ]))
+
+            results.append({
+                'ex':b['ex'],
+                'pair':b['pair'],
+                'open_date':b['date'],
+                'volume':b['volume'],
+                'buy_price':b['price'],
+                'cost':b['amount'],
+                'status':b['status'],
+                'balance':b['volume'] - (s[0]['volume'] if len(s)>0 else 0),
+                'sell_price': s[0]['price'] if len(s)>0 else None,
+                'revenue':s[0]['revenue'] if len(s)>0 else None,
+                'fees': b['fee'] + (s[0]['fees'] if len(s)>0 else 0),
+                'close_date': s[0]['last_date'] if len(s)>0 and b['status']=='closed' else None
+            })
+        return results
 
     #--------------------------------------------------------------------------
     def balance(self, ex=None, status=None):
