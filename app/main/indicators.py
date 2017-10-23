@@ -21,12 +21,9 @@ def build_series(ex, pair, start, end):
     """Calculate key indicators for 10 min periods in given date range
     for given exchange/book.
     """
-
     m = round(start.minute, -1)
     if m == 60:
         m = 50
-
-
     p_start = p_end = datetime.combine(start.date(), time(start.hour, m))
     p_end += timedelta(minutes=10)
     n_mod = n_upsert = 0

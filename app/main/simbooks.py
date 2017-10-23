@@ -90,6 +90,8 @@ def merge(ex, pair, bids, asks):
                 # If price match, take lowest of the 2 volumes.
                 if sim_order[0] == order[0]:
                     merged[k].append([order[0], min(order[1], sim_order[1])])
+                    #log.debug('simbooks.merge match, price=%s, vol=%s',
+                    #    order[0], min(order[1],sim_order[1]))
                     b_match = True
                     n_matches += 1
                     break

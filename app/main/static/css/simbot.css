@@ -52,10 +52,17 @@ a.nav-link {
     border:1px solid rgba(0, 0, 0, 0.14);
     border-radius:5px;
 }
+.min-max {
+    color:#74480a;
+}
 .panel-hdr {
     color:#136d8d;
     border-bottom:1px solid rgba(0,0,0,0.15);
     background-color:rgba(211, 211, 211,0.10);
+}
+#spinner {
+    width:1198px;
+    height:100%;
 }
 
 #dt-holdings_length label {
@@ -80,6 +87,10 @@ a.nav-link {
 #chart-panel {
     background-color:white;
     width:100%;
+}
+.chart {
+    width:100%;
+    height:100%;
 }
 
 /***** datatable.js overrides *****/

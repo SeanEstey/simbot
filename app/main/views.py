@@ -14,3 +14,8 @@ def index():
 @main.route('/analysis')
 def _analysis():
     return render_template('analysis.html')
+
+#-------------------------------------------------------------------------------
+@main.route('/realtime')
+def view_realtime():
+    return render_template('realtime.html')

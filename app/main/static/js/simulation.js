@@ -164,7 +164,7 @@ function showExchTickers() {
                 var $item = $('#ticker-item').clone().prop('id',t_id);
                 $item.find('#exch').text(book['name']);
                 $item.find('#trade-pair').text(book['base'].toUpperCase()+'/'+book['trade'].toUpperCase());
-                
+
                 upd_val($item.find('#bid'), '$'+num_format(book['bid'],0));
                 upd_val($item.find('#ask'), '$'+num_format(book['ask'],0));
                 upd_val($item.find('#low'), '$'+num_format(book['low'] || '',0));

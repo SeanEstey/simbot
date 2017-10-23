@@ -1,6 +1,5 @@
 /* charts.js */
 MS_10_MIN = 600000;
-//MS_1_HR = 3600000;
 MS_1_DAY = 86400000;
 SERIES_CONF = [
     {period: {name:'1d', duration: 86400000}, slices: {amount: 144, duration: 600000}},
@@ -37,9 +36,7 @@ function Chart(contId, type) {
     this.$spinner.width(this.cv.width);
     this.$spinner.height(this.cv.height);
     this.prevWidth = this.$cont.width();
-
     this.toggleSpinner(true);
-    //$(window).resize(function(){this.resize()});
 }
 
 Chart.prototype.querySeries = function(url, options) {
@@ -134,23 +131,6 @@ Chart.prototype.querySeriesData = function(url, options, idx) {
 }
 
 //------------------------------------------------------------------------------
-Chart.prototype.yValueAvg = function(data, k, start, end) {
-    /* Timeseries average y-val.
-    */
-    var y_values = data.filter(
-        function(elem, j, data) {
-            var d = elem['date']['$date'];
-            if(d >= start && d < end) return elem;
-        }
-    ).map(function(x) { return x[k] });
-
-    if(y_values.length == 0)
-        return null;
-    else
-        return Number((y_values.reduce(function(a,b){ return a+b }) / y_values.length)) 
-}
-
-//------------------------------------------------------------------------------
 Chart.prototype.fillDataGaps = function(data) {
     /* Pad any null values in series data w/ prev series value.
     */
@@ -233,7 +213,6 @@ Chart.prototype.draw = function() {
         this.morrisObj = Morris.Line(options);
     else if(this.type == 'area')
         this.morrisObj = Morris.Area(options);
-
     //this.resize();
 }
 
@@ -338,9 +317,9 @@ function resampleData(period, data) {
             (i+1), sample['start'].toLocaleDateString(), sample['start'].toLocaleTimeString(),
             sample['end'].toLocaleTimeString()), sample['price']);
         */
-        
         resampled.push(sample);
     }
+    console.log(resampled);
     return resampled;
 }
 

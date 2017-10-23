@@ -30,7 +30,6 @@ function initCharts() {
 
 //------------------------------------------------------------------------------
 function initEventHandlers() {
-
     // Exchange changed.
     $('#controls input[type="checkbox"]').change(function() {
         var time_lbl = $('#controls select[name="time_lbl"]').val();
@@ -62,10 +61,8 @@ function initEventHandlers() {
 
 //------------------------------------------------------------------------------
 function generateGroupCharts(ex, asset, period) {
-
     console.log(format('Generating charts, ex=%s, asset=%s, period=%s',
         ex, asset, period));
-
     var tspan = getTimespan(period, units='s');
 
     $.ajax({
@@ -81,7 +78,9 @@ function generateGroupCharts(ex, asset, period) {
             var raw = JSON.parse(json);
             var rsdata = resampleData(period, raw);
 
+            //priceChart.addSeries(rsdata, {label:'ask', ykey:'ask_price', decimals:2});
             priceChart.addSeries(rsdata, {label:'price', ykey:'price', decimals:2});
+            //priceChart.addSeries(rsdata, {label:'bid', ykey:'bid_price', decimals:2});
 
             ordBookChart.addSeries(rsdata, {label:'ask_vol', ykey:'ask_vol', decimals:3});
             ordBookChart.addSeries(rsdata, {label:'bid_vol', ykey:'bid_vol', decimals:3});
@@ -93,6 +92,17 @@ function generateGroupCharts(ex, asset, period) {
             sellVolChart.addSeries(rsdata, {label:'sell_vol', ykey:'sell_vol', decimals:2});
         }
     });
+}
+
+//------------------------------------------------------------------------------
+function annotateChart(chart) {
+    var t = priceChart.morrisObj.raphael.text(300, 100, 'SEAN ROCKS');
+    t.attr({ "font-size": 20, "stroke":"#FF0000", "font-family": "Arial, Helvetica, sans-serif" });
+
+    // Datapoint coords are in priceChart.morrisObj.data
+    var pt = priceChart.morrisObj.data[0];
+    console.log(format('price=%s, x=%s, y=%s', pt['y'][0], pt['_x'], pt['_y']));
+
 
 }
 
