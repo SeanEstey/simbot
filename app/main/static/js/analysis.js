@@ -1,92 +1,118 @@
 /* analysis.js */
 BASE_URL = "http://45.79.176.125";
 TIME_LBL = '7d';
+EX = 'QuadrigaCX';
+
+priceChart = null; 
+ordBookChart = null;
+buyVolChart = null;
+sellVolChart = null;
 
 //------------------------------------------------------------------------------
 function initMain() {
-    initSlidePanel('markets');
-    initSlidePanel('orders');
-    initSlidePanel('orders2');
-
-    showOrderBookCharts();
+    initCharts();
+    generateGroupCharts('QuadrigaCX', 'btc', '1d');
+    initEventHandlers();
 }
 
 //------------------------------------------------------------------------------
-function showOrderBookCharts() {
-    var market = new Chart('mkt-cont', 'Area');
-    var v_orders = new Chart('ord-chrt-contr', 'Area');
-    var books = new Chart('orders2-cont', 'Area');
-    var inertia = new Chart('orders3-cont', 'Area');
+function initCharts() {
+    initSlidePanel('prices');
+    initSlidePanel('orders');
+    initSlidePanel('trade1');
+    initSlidePanel('trade2');
 
-    var trade1 = new Chart('trade1-cont', 'Area');
-    var trade2 = new Chart('trade2-cont', 'Area');
+    priceChart = new Chart('mkt-cont', 'area');
+    ordBookChart= new Chart('ordbook-cont', 'line');
+    buyVolChart = new Chart('trade1-cont', 'area');
+    sellVolChart = new Chart('trade2-cont', 'area');
+}
 
-    var tspan = market.getTimespan(TIME_LBL, units='s');
+//------------------------------------------------------------------------------
+function initEventHandlers() {
+
+    // Exchange changed.
+    $('#controls input[type="checkbox"]').change(function() {
+        var time_lbl = $('#controls select[name="time_lbl"]').val();
+        var asset = $('#controls select[name="asset"]').val();
+        var series_lbl = $(this).prop('name');
+
+        if($(this)[0].checked) {
+            marketChart.toggleSpinner(true);
+            marketChart.addSeries(
+              '/trades/get',
+              {ex:series_lbl, asset:asset, label:series_lbl, ykey:'price', type:'area', decimals:2, time_lbl:time_lbl}
+            );
+        }
+        else if(!$(this)[0].checked) {
+            marketChart.toggleSpinner(true);
+            var idx = marketChart.getSeriesIdx(series_lbl);
+            marketChart.rmvSeries(idx);
+        }
+    });
+
+    // Asset/period name changed.
+    $('#controls select').change(function(){
+        var period = $('#controls select[name="time_lbl"]').val();
+        var asset = $('#controls select[name="asset"]').val();
+        initCharts();
+        generateGroupCharts(EX, asset, period);
+    });
+}
+
+//------------------------------------------------------------------------------
+function generateGroupCharts(ex, asset, period) {
+
+    console.log(format('Generating charts, ex=%s, asset=%s, period=%s',
+        ex, asset, period));
+
+    var tspan = getTimespan(period, units='s');
+
     $.ajax({
         type: 'POST',
         url: BASE_URL + '/indicators/get',
         data:{
-            ex:'QuadrigaCX',
-            asset:'btc',
+            ex:ex,
+            asset:asset,
             since:tspan[0] + (3600*6), // convert to UTC
             until:tspan[1] + (3600*6) // convert to UTC
         },
-        async:true,
-        context: this,
         success:function(json){ 
             var raw = JSON.parse(json);
-            var resample_data = market.resample(TIME_LBL, raw);
+            var rsdata = resampleData(period, raw);
 
-            market.addSeries(resample_data,
-                {ex:'QuadrigaCX', asset:'btc', label:'price', ykey:'price', type:'area',
-                decimals:2, time_lbl:TIME_LBL});
-            v_orders.addSeries(resample_data,
-                {ex:'QuadrigaCX', asset:'btc', label:'ask_vol', ykey:'ask_vol', type:'line',
-                decimals:3, time_lbl:TIME_LBL});
-            v_orders.addSeries(resample_data, 
-                {ex:'QuadrigaCX', asset:'btc', label:'bid_vol', ykey:'bid_vol', type:'line',
-                decimals:3, time_lbl:TIME_LBL});
+            priceChart.addSeries(rsdata, {label:'price', ykey:'price', decimals:2});
 
-            trade1.addSeries(resample_data,
-                {ex:'QuadrigaCX', asset:'btc', label:'ask_inertia', ykey:'ask_inertia', type:'area',
-                decimals:3, time_lbl:TIME_LBL});
-            trade1.addSeries(resample_data,
-                {ex:'QuadrigaCX', asset:'btc', label:'buy_vol', ykey:'buy_vol', type:'area',
-                decimals:2, time_lbl:TIME_LBL});
+            ordBookChart.addSeries(rsdata, {label:'ask_vol', ykey:'ask_vol', decimals:3});
+            ordBookChart.addSeries(rsdata, {label:'bid_vol', ykey:'bid_vol', decimals:3});
 
-            trade2.addSeries(resample_data,
-                {ex:'QuadrigaCX', asset:'btc', label:'bid_inertia', ykey:'bid_inertia', type:'area',
-                decimals:3, time_lbl:TIME_LBL});
-            trade2.addSeries(resample_data,
-                {ex:'QuadrigaCX', asset:'btc', label:'sell_vol', ykey:'sell_vol', type:'area',
-                decimals:2, time_lbl:TIME_LBL});
+            buyVolChart.addSeries(rsdata, {label:'ask_inertia', ykey:'ask_inertia', decimals:3});
+            buyVolChart.addSeries(rsdata, {label:'buy_vol', ykey:'buy_vol', decimals:2});
 
-            /* Annotate area where vol > intertia:
-                // Highlight vertex
-                <circle
-                    cx="720.1004601903709" cy="213.9199054798183"
-                    r="5" fill="blue" stroke="blue" stroke-width="5"
-                    style="-webkit-tap-highlight-color: rgba(0, 0, 0, 0);">
-                </circle>
-
-                // Add text annotation
-                <text
-                    x="628.4920264554312" y="212.55307205502413"
-                    text-anchor="middle" font="10px &quot;Arial&quot;" stroke="none" fill="red"
-                    style="-webkit-tap-highlight-color: red; text-anchor: middle; font-style: normal; font-variant: normal; font-weight: normal; font-stretch: normal; font-size: 12px; line-height: normal; font-family: sans-serif;"
-                    font-size="12px" font-family="sans-serif" font-weight="normal" transform="matrix(1,0,0,1,0,6.6641)">
-                    <tspan style="-webkit-tap-highlight-color: rgba(0, 0, 0, 0);" dy="4.00262451171875">
-                         ASK INERTIA CRITICAL!
-                    </tspan>
-                </text>
-            */
-
-            books.addSeries(resample_data,
-                {ex:'QuadrigaCX', asset:'btc', label:'bid_price', ykey:'bid_price', type:'line',
-                decimals:2, time_lbl:TIME_LBL});
-            books.addSeries(resample_data,
-                {ex:'QuadrigaCX', asset:'btc', label:'ask_price', ykey:'ask_price', type:'line',
-                decimals:2, time_lbl:TIME_LBL});
+            sellVolChart.addSeries(rsdata, {label:'bid_inertia', ykey:'bid_inertia', decimals:3});
+            sellVolChart.addSeries(rsdata, {label:'sell_vol', ykey:'sell_vol', decimals:2});
         }
     });
+
 }
+
+//------------------------------------------------------------------------------
+/* Annotate area where vol > intertia:
+    // Highlight vertex
+    <circle
+        cx="720.1004601903709" cy="213.9199054798183"
+        r="5" fill="blue" stroke="blue" stroke-width="5"
+        style="-webkit-tap-highlight-color: rgba(0, 0, 0, 0);">
+    </circle>
+
+    // Add text annotation
+    <text
+        x="628.4920264554312" y="212.55307205502413"
+        text-anchor="middle" font="10px &quot;Arial&quot;" stroke="none" fill="red"
+        style="-webkit-tap-highlight-color: red; text-anchor: middle; font-style: normal; font-variant: normal; font-weight: normal; font-stretch: normal; font-size: 12px; line-height: normal; font-family: sans-serif;"
+        font-size="12px" font-family="sans-serif" font-weight="normal" transform="matrix(1,0,0,1,0,6.6641)">
+        <tspan style="-webkit-tap-highlight-color: rgba(0, 0, 0, 0);" dy="4.00262451171875">
+             ASK INERTIA CRITICAL!
+        </tspan>
+    </text>
+*/

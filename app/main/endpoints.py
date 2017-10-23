@@ -12,7 +12,7 @@ from .simbot import SimBot
 @main.route('/test/series', methods=['GET'])
 def _test_series():
     from app.main.tasks import update_client_indicators
-    update_client_indicators.delay(ndays=7)
+    update_client_indicators.delay(ndays=31)
     return 'ok'
 
 @main.route('/indicators/get', methods=['POST'])

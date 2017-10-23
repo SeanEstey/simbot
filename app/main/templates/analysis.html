@@ -8,210 +8,120 @@
 {% endblock %}
 {% block content %}
   <div class="row no-gutters">
-
-    <div id="market" class="slide-panel col-xl-6 my-4 mx-auto">
-      <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-        <span><h3 class="mb-0">Market</h3></span>
-        <span class="min-max pull-right" data-toggle="collapse" data-target="#mkt-bdy" style="color:#74480a">
-          <i class="fa fa-window-minimize text-right"></i>
-        </span>
-      </div>
-      <div id="mkt-bdy" class="panel-bdy collapse show">
-        <div class="analy-hdr text-left pt-3 px-3">
-          <label class="mr-4">
-            <select name="asset" aria-controls="chart" class="form-control form-control-sm">
-              <option value="btc">BTC</option>
-              <option value="eth">ETH</option>
-            </select>
-          </label>
-          <label class="mr-4">
-            <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
-              <option value="1d">1 Day</option>
-              <option value="7d">1 Week</option>
-              <option value="1m">1 Month</option>
-              <option value="3m">3 Months</option>
-              <option value="6m">6 Months</option>
-              <option value="ytd">YTD</option>
-              <option value="1y">1 Year</option>
-              <option value="all">All</option>
-            </select>
-          </label>
-        </div>
-        <div class="chart text-center p-0" style="width:100%; height:100%;" id="mkt-cont"> 
-          <canvas id="spinner" style="width:1198px; height:100%"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <div id="orders2" class="slide-panel col-xl-6 my-4 mx-auto">
-      <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-        <span><h3 class="mb-0">Spread</h3></span>
-        <span class="min-max pull-right" data-toggle="collapse" data-target="#ord2-bdy" style="color:#74480a">
-          <i class="fa fa-window-minimize text-right"></i>
-        </span>
-      </div>
-      <div id="ord2-bdy" class="panel-bdy collapse show">
-        <div class="analy-hdr text-left pt-3 px-3">
-          <label class="mr-4">
-            <select name="asset" aria-controls="chart" class="form-control form-control-sm">
-              <option value="btc">BTC</option>
-              <option value="eth">ETH</option>
-            </select>
-          </label>
-          <label class="mr-4">
-            <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
-              <option value="1d">1 Day</option>
-              <option value="7d">1 Week</option>
-              <option value="1m">1 Month</option>
-              <option value="3m">3 Months</option>
-              <option value="6m">6 Months</option>
-              <option value="ytd">YTD</option>
-              <option value="1y">1 Year</option>
-              <option value="all">All</option>
-            </select>
-          </label>
-        </div>
-        <div class="chart text-center p-0" style="width:100%; height:100%;" id="orders2-cont"> 
-          <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+    <!--Chart Controls-->
+    <div class="col-12">
+      <div class="ml-4 mt-4 p-1">
+        <div id="controls">
+          <h5 class="text-center" hidden>Chart Options</h5>
+          <div class="d-flex flex-row">
+            <label class="custom-control custom-checkbox">
+              <input name="QuadrigaCX" type="checkbox" class="custom-control-input">
+              <span class="custom-control-indicator"></span>
+              <span class="custom-control-description">QuadrigaCX</span>
+            </label>
+            <label class="custom-control custom-checkbox">
+              <input name="Coinsquare" type="checkbox" class="custom-control-input">
+              <span class="custom-control-indicator"></span>
+              <span class="custom-control-description">Coinsquare</span>
+            </label>
+            <label class="custom-control custom-checkbox">
+              <input name="Kraken" type="checkbox" class="custom-control-input">
+              <span class="custom-control-indicator"></span>
+              <span class="custom-control-description">Kraken</span>
+            </label>
+            <label class="mr-4">
+              <select name="asset" aria-controls="chart" class="form-control form-control-sm">
+                <option value="btc">BTC</option>
+                <option value="eth">ETH</option>
+              </select>
+            </label>
+            <label class="mr-4">
+              <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
+                <option value="1d">1 Day</option>
+                <option value="7d">1 Week</option>
+                <option value="1m">1 Month</option>
+                <option value="3m">3 Months</option>
+                <option value="6m">6 Months</option>
+                <option value="ytd">YTD</option>
+                <option value="1y">1 Year</option>
+                <option value="all">All</option>
+              </select>
+            </label>
+          </div>
         </div>
       </div>
     </div>
-
-    <div id="trade1" class="slide-panel col-xl-6 my-4 mx-auto">
-      <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-        <span><h3 class="mb-0">Buy Volume vs Ask Inertia</h3></span>
-        <span class="min-max pull-right" data-toggle="collapse" data-target="#trade1-bdy" style="color:#74480a">
-          <i class="fa fa-window-minimize text-right"></i>
-        </span>
-      </div>
-      <div id="trade1-bdy" class="panel-bdy collapse show">
-        <div class="analy-hdr text-left pt-3 px-3">
-          <label class="mr-4">
-            <select name="asset" aria-controls="chart" class="form-control form-control-sm">
-              <option value="btc">BTC</option>
-              <option value="eth">ETH</option>
-            </select>
-          </label>
-          <label class="mr-4">
-            <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
-              <option value="1d">1 Day</option>
-              <option value="7d">1 Week</option>
-              <option value="1m">1 Month</option>
-              <option value="3m">3 Months</option>
-              <option value="6m">6 Months</option>
-              <option value="ytd">YTD</option>
-              <option value="1y">1 Year</option>
-              <option value="all">All</option>
-            </select>
-          </label>
-        </div>
-        <div class="chart text-center p-0" style="width:100%; height:100%;" id="trade1-cont"> 
-          <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+    <!--Market Price Chart-->
+    <div class="col-12 col-xl-6">
+      <div class="p-3">
+        <div id="prices" class="slide-panel">
+          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+            <span><h4 class="mb-0">Market Price</h4></span>
+            <span class="min-max pull-right" data-toggle="collapse" data-target="#mkt-bdy" style="color:#74480a">
+              <i class="fa fa-window-minimize text-right"></i>
+            </span>
+          </div>
+          <div id="mkt-bdy" class="panel-bdy collapse show">
+            <div class="chart text-center p-0" style="width:100%; height:100%;" id="mkt-cont"> 
+              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
-    <div id="trade2" class="slide-panel col-xl-6 my-4 mx-auto">
-      <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-        <span><h3 class="mb-0">Sell Volume vs Bid Inertia</h3></span>
-        <span class="min-max pull-right" data-toggle="collapse" data-target="#trade2-bdy" style="color:#74480a">
-          <i class="fa fa-window-minimize text-right"></i>
-        </span>
-      </div>
-      <div id="trade2-bdy" class="panel-bdy collapse show">
-        <div class="analy-hdr text-left pt-3 px-3">
-          <label class="mr-4">
-            <select name="asset" aria-controls="chart" class="form-control form-control-sm">
-              <option value="btc">BTC</option>
-              <option value="eth">ETH</option>
-            </select>
-          </label>
-          <label class="mr-4">
-            <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
-              <option value="1d">1 Day</option>
-              <option value="7d">1 Week</option>
-              <option value="1m">1 Month</option>
-              <option value="3m">3 Months</option>
-              <option value="6m">6 Months</option>
-              <option value="ytd">YTD</option>
-              <option value="1y">1 Year</option>
-              <option value="all">All</option>
-            </select>
-          </label>
-        </div>
-        <div class="chart text-center p-0" style="width:100%; height:100%;" id="trade2-cont"> 
-          <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+    <!--Order Book Volume Chart-->
+    <div class="col-12 col-xl-6">
+      <div class="p-3">
+        <div id="orders" class="slide-panel">
+          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+            <span><h4 class="mb-0">Order Book Volume</h4></span>
+            <span class="min-max pull-right" data-toggle="collapse" data-target="#ord-bdy" style="color:#74480a">
+              <i class="fa fa-window-minimize text-right"></i>
+            </span>
+          </div>
+          <div id="ord-bdy" class="panel-bdy collapse show">
+            <div class="chart text-center p-0" style="width:100%; height:100%;" id="ordbook-cont"> 
+              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
-    <div id="orders" class="slide-panel col-xl-6 mb-4 mx-auto">
-      <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-        <span><h3 class="mb-0">Order Book Volume</h3></span>
-        <span class="min-max pull-right" data-toggle="collapse" data-target="#ord-bdy" style="color:#74480a">
-          <i class="fa fa-window-minimize text-right"></i>
-        </span>
-      </div>
-      <div id="ord-bdy" class="panel-bdy collapse show">
-        <div class="analy-hdr text-left pt-3 px-3">
-          <label class="mr-4">
-            <select name="asset" aria-controls="chart" class="form-control form-control-sm">
-              <option value="btc">BTC</option>
-              <option value="eth">ETH</option>
-            </select>
-          </label>
-          <label class="mr-4">
-            <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
-              <option value="1d">1 Day</option>
-              <option value="7d">1 Week</option>
-              <option value="1m">1 Month</option>
-              <option value="3m">3 Months</option>
-              <option value="6m">6 Months</option>
-              <option value="ytd">YTD</option>
-              <option value="1y">1 Year</option>
-              <option value="all">All</option>
-            </select>
-          </label>
-        </div>
-        <div class="chart text-center p-0" style="width:100%; height:100%;" id="ord-chrt-contr"> 
-          <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+    <!--Buy Volume Chart-->
+    <div class="col-12 col-xl-6">
+      <div class="p-3">
+        <div id="trade1" class="slide-panel">
+          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+            <span><h4 class="mb-0">Buy Volume vs Ask Inertia</h4></span>
+            <span class="min-max pull-right" data-toggle="collapse" data-target="#trade1-bdy" style="color:#74480a">
+              <i class="fa fa-window-minimize text-right"></i>
+            </span>
+          </div>
+          <div id="trade1-bdy" class="panel-bdy collapse show">
+            <div class="chart text-center p-0" style="width:100%; height:100%;" id="trade1-cont"> 
+              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
-    <div id="orders3" class="slide-panel col-xl-6 mb-4 mx-auto">
-      <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-        <span><h3 class="mb-0">Order Book Inertia</h3></span>
-        <span class="min-max pull-right" data-toggle="collapse" data-target="#ord3-bdy" style="color:#74480a">
-          <i class="fa fa-window-minimize text-right"></i>
-        </span>
-      </div>
-      <div id="ord3-bdy" class="panel-bdy collapse show">
-        <div class="analy-hdr text-left pt-3 px-3">
-          <label class="mr-4">
-            <select name="asset" aria-controls="chart" class="form-control form-control-sm">
-              <option value="btc">BTC</option>
-              <option value="eth">ETH</option>
-            </select>
-          </label>
-          <label class="mr-4">
-            <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
-              <option value="1d">1 Day</option>
-              <option value="7d">1 Week</option>
-              <option value="1m">1 Month</option>
-              <option value="3m">3 Months</option>
-              <option value="6m">6 Months</option>
-              <option value="ytd">YTD</option>
-              <option value="1y">1 Year</option>
-              <option value="all">All</option>
-            </select>
-          </label>
-        </div>
-        <div class="chart text-center p-0" style="width:100%; height:100%;" id="orders3-cont"> 
-          <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+    <!--Sell Volume Chart-->
+    <div class="col-12 col-xl-6">
+      <div class="p-3">
+        <div id="trade2" class="slide-panel">
+          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+            <span><h4 class="mb-0">Sell Volume vs Bid Inertia</h4></span>
+            <span class="min-max pull-right" data-toggle="collapse" data-target="#trade2-bdy" style="color:#74480a">
+              <i class="fa fa-window-minimize text-right"></i>
+            </span>
+          </div>
+          <div id="trade2-bdy" class="panel-bdy collapse show">
+            <div class="chart text-center p-0" style="width:100%; height:100%;" id="trade2-cont"> 
+              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
   </div>
 {% endblock %}

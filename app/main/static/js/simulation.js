@@ -56,11 +56,11 @@ function initEventHandlers() {
 
 //------------------------------------------------------------------------------
 function showMarketChart() {
-    marketChart = new Chart('chart-contr', 'Area');
+    marketChart = new Chart('chart-contr', 'area');
     $('input[name="QuadrigaCX"]').click();
 
     var data = null;
-    var tspan = marketChart.getTimespan('1d', units='s');
+    var tspan = getTimespan('1d', units='s');
     $.ajax({
         type: 'POST',
         url: BASE_URL + '/indicators/get',
@@ -72,11 +72,9 @@ function showMarketChart() {
         },
         async:true,
         context: this,
-        success:function(json){ 
-            console.log(json);
+        success:function(json){
             var raw = JSON.parse(json);
-            console.log(raw);
-            var resampled = marketChart.resample('1d', raw);
+            var resampled = resampleData('1d', raw);
             marketChart.addSeries(resampled,
                 {ex:'QuadrigaCX', asset:'btc', label:'price', ykey:'price', type:'area',
                 decimals:2, time_lbl:'1d'});

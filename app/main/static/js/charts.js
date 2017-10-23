@@ -1,21 +1,17 @@
 /* charts.js */
 MS_10_MIN = 600000;
-MS_1_HR = 3600000;
+//MS_1_HR = 3600000;
 MS_1_DAY = 86400000;
-PERIODS = {
-    '1d': {n_periods:144, duration:MS_10_MIN},
-    '7d': {n_periods:168, duration:MS_1_HR},
-    '1m': {n_periods:240, duration:MS_1_HR*3},
-    '3m': {n_periods:180, duration:MS_1_HR*12}
-};
-TIME_LEN = {
-    '1d':MS_1_DAY,
-    '7d':MS_1_DAY*7,
-    '1m':MS_1_DAY*30,
-    '3m':MS_1_DAY*90,
-    '6m':MS_1_DAY*180,
-    '1y':MS_1_DAY*360
-};
+SERIES_CONF = [
+    {period: {name:'1d', duration: 86400000}, slices: {amount: 144, duration: 600000}},
+    {period: {name:'7d', duration: 604800000}, slices: {amount: 168, duration: 3600000}},
+    {period: {name:'1m', duration: 2592000000}, slices: {amount: 240, duration: 10800000}},
+    {period: {name:'3m', duration: 7776000000}, slices: {amount: 180, duration: 43200000}},
+    {period: {name:'6m', duration: null}, slices: {amount: null, duration: null}},
+    {period: {name:'1y', duration: null}, slices: {amount: null, duration: null}},
+    {period: {name:'ytd', duration: null}, slices: {amount: null, duration: null}},
+    {period: {name:'all', duration: null}, slices: {amount: null, duration: null}}
+];
 
 //-----------------------------------------------------------------------------
 function Chart(contId, type) {
@@ -57,7 +53,6 @@ Chart.prototype.addSeries = function(data, options) {
     this.draw();
 }
 
-
 Chart.prototype.replaceSeries = function(url, options, idx) { 
     this.querySeriesData(url, options, idx); 
 }
@@ -65,63 +60,6 @@ Chart.prototype.replaceSeries = function(url, options, idx) {
 Chart.prototype.rmvSeries = function(idx) {
     this.series.splice(idx,1);
     this.draw();
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.resample = function(time_lbl, data) {
-    var n_subsamples = PERIODS[time_lbl]['duration'] / MS_10_MIN;
-    var resampled_data = []
-    var n_resample_periods = data.length / n_subsamples;
-
-    console.log(format('Resampling data, Period duration=[%s to %s], Num periods=[%s to %s]',
-        MS_10_MIN, PERIODS[time_lbl]['duration'], data.length, n_resample_periods));
-
-    for(var i=0; i<n_resample_periods-1; i++) {
-        var subsamples = data.splice(0,n_subsamples);
-
-        var sample = {
-            ex: subsamples[0]['ex'],
-            pair: subsamples[0]['pair'],
-            date: subsamples[n_subsamples-1]['end']['$date'],
-            start: new Date(subsamples[0]['start']['$date']),
-            end: new Date(subsamples[n_subsamples-1]['end']['$date'])
-        };
-        for(var k in subsamples[0]['avg'])
-            sample[k] = [];
-        for(var k in subsamples[0]['sum'])
-            sample[k] = 0;
-        
-        for(var j=0; j<subsamples.length; j++) {
-            for(var k in subsamples[j]['avg']) {
-                //console.log(format('avg k=%s, val=%s', k, subsamples[j]['avg'][k]));
-                if(subsamples[j]['avg'][k])
-                    sample[k].push(subsamples[j]['avg'][k]);
-            }
-
-            for(var k in subsamples[j]['sum'])
-                sample[k] += subsamples[j]['sum'][k];
-        }
-
-        // Sum up arrays of avg values, reduce to number.
-        for(var k in subsamples[0]['avg']) {
-            var len = sample[k].length;
-            var sum = sample[k].reduce(function(a,b){return a+b},0);
-            var avg = sum / len;
-            sample[k] = avg;
-            //console.log(format('k=%s, sum=%s, length=%s, avg=%s', k, sum, len, avg));
-        }
-
-        console.log(format('Period #%s, Date=%s, Timespan=[%s to %s], Price=%s',
-            (i+1), sample['start'].toLocaleDateString(), sample['start'].toLocaleTimeString(),
-            sample['end'].toLocaleTimeString()), sample['price']);
-        
-        console.log(JSON.stringify(sample));
-
-        resampled_data.push(sample);
-    }
-
-    console.log(resampled_data);
-    return resampled_data;
 }
 
 //------------------------------------------------------------------------------
@@ -144,7 +82,7 @@ Chart.prototype.combineSeries = function() {
         data.push(point);
     }
     this.fillDataGaps(data);
-    //console.log(JSON.stringify(data));
+    //console.log(data);
     return data;
 }
 
@@ -169,7 +107,7 @@ Chart.prototype.getSeriesIdx = function(series_lbl=false, selected_by=false) {
 Chart.prototype.querySeriesData = function(url, options, idx) {
     /* POST request returning series data  */
     var data = null;
-    var tspan = this.getTimespan(options['time_lbl'], units='s');
+    var tspan = getTimespan(options['time_lbl'], units='s');
     $.ajax({
         type: 'POST',
         url: BASE_URL + url,
@@ -193,24 +131,6 @@ Chart.prototype.querySeriesData = function(url, options, idx) {
             this.draw();
         }
     });
-}
-
-//------------------------------------------------------------------------------
-Chart.prototype.getTimespan = function(lbl, units='ms') {
-    /* @lbl: series duration label ('1d','7d','6m',etc)
-     * @units: result format. 'ms' or 's'
-     * Returns: array of ints [t_start, t_end]
-    */
-    var length = null;
-    var today = new Date();
-    var end = t_now = today.getTime();
-    if(lbl == 'ytd')
-        length = MS_1_DAY * (today.getWeek()*7 + today.getDay());
-    else
-        length = TIME_LEN[lbl];
-    var start = length ? (t_now - length) : null;
-    
-    return units == 'ms' ? [start, end] : [msToSec(start), msToSec(end)];
 }
 
 //------------------------------------------------------------------------------
@@ -309,9 +229,9 @@ Chart.prototype.draw = function() {
         resize: true
     };
 
-    if(this.series[0]['type'] == 'line')
+    if(this.type == 'line')
         this.morrisObj = Morris.Line(options);
-    else if(this.series[0]['type'] == 'area')
+    else if(this.type == 'area')
         this.morrisObj = Morris.Area(options);
 
     //this.resize();
@@ -365,4 +285,87 @@ Chart.prototype.rotateSpinner = function() {
             this.rotateSpinner
         );
     }
+}
+
+//------------------------------------------------------------------------------
+function resampleData(period, data) {
+    /* Time series data from server is sliced in 10 min intervals, for
+     * period=1d. Recalculate for periods [7d,1m,3m,6m,ytd,1y,all].
+     * @period: period name
+     */
+    var conf = get_conf(period);
+    var n_subsamples = conf['slices']['duration'] / MS_10_MIN;
+    var n_resample_periods = conf['slices']['amount'];
+    var resampled = [];
+
+    console.log(format('Resampling data, Period duration=[%s to %s], Num periods=[%s to %s]',
+        MS_10_MIN, conf['slices']['duration'], data.length, n_resample_periods));
+
+    for(var i=0; i<n_resample_periods-1; i++) {
+        var subsamples = data.splice(0,n_subsamples);
+
+        var sample = {
+            ex: subsamples[0]['ex'],
+            pair: subsamples[0]['pair'],
+            date: subsamples[n_subsamples-1]['end']['$date'],
+            start: new Date(subsamples[0]['start']['$date']),
+            end: new Date(subsamples[n_subsamples-1]['end']['$date'])
+        };
+        for(var k in subsamples[0]['avg'])
+            sample[k] = [];
+        for(var k in subsamples[0]['sum'])
+            sample[k] = 0;
+        
+        for(var j=0; j<subsamples.length; j++) {
+            for(var k in subsamples[j]['avg']) {
+                if(subsamples[j]['avg'][k])
+                    sample[k].push(subsamples[j]['avg'][k]);
+            }
+
+            for(var k in subsamples[j]['sum'])
+                sample[k] += subsamples[j]['sum'][k];
+        }
+
+        // Sum up arrays of avg values, reduce to number.
+        for(var k in subsamples[0]['avg']) {
+            var len = sample[k].length;
+            var sum = sample[k].reduce(function(a,b){return a+b},0);
+            var avg = sum / len;
+            sample[k] = avg;
+        }
+
+        /*console.log(format('Period #%s, Date=%s, Timespan=[%s to %s], Price=%s',
+            (i+1), sample['start'].toLocaleDateString(), sample['start'].toLocaleTimeString(),
+            sample['end'].toLocaleTimeString()), sample['price']);
+        */
+        
+        resampled.push(sample);
+    }
+    return resampled;
+}
+
+//-----------------------------------------------------------------------------
+function get_conf(period) {
+    var r = SERIES_CONF.filter(function(elem){if(elem.period.name==period) return elem }, period);
+    return r[0];
+}
+
+//------------------------------------------------------------------------------
+function getTimespan(period, units='ms') {
+    /* @period: one of ['1d','7d','1m','3m','6m','1y','ytd','all']
+     * @units: result format. 'ms' or 's'
+     * Returns: array of ints [t_start, t_end]
+    */
+    var length = null;
+    var today = new Date();
+    var end = t_now = today.getTime();
+
+    if(period == 'ytd')
+        length = MS_1_DAY * (today.getWeek()*7 + today.getDay());
+    else
+        length = get_conf(period)['period']['duration'];
+
+    var start = length ? (t_now - length) : null;
+    
+    return units == 'ms' ? [start, end] : [msToSec(start), msToSec(end)];
 }
