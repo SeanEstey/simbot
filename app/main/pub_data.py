@@ -8,22 +8,22 @@ from app.main import ex_confs
 from app.main import quadcx
 from app.main.socketio import smart_emit
 from app.quadriga import QuadrigaClient
+from config import ACTIVE_SIM_BOT
 log = logging.getLogger(__name__)
-
-API_BOT_NAME = 'Terry'
-CLIENT_ID=64288
 
 #---------------------------------------------------------------
 def save_tickers():
     quadcx.update_ticker(('btc','cad'))
     quadcx.update_ticker(('eth','cad'))
-    #coinsquare.update_ticker()
 
 #---------------------------------------------------------------
 def save_trades():
     for conf in ex_confs():
-        api = g.db['sim_bots'].find_one({'name':API_BOT_NAME})['api'][0]
-        client = QuadrigaClient(api_key=api['key'], api_secret=api['secret'], client_id=CLIENT_ID)
+        api = g.db['sim_bots'].find_one({'name':ACTIVE_SIM_BOT})['api'][0]
+        client = QuadrigaClient(
+            api_key=api['key'],
+            api_secret=api['secret'],
+            client_id=conf['CLIENT_ID'])
 
         for pair in conf['PAIRS']:
             n_new = n_total = 0
@@ -42,23 +42,23 @@ def save_trades():
                         'side':trade['side']
                     }},
                     True)
-
                 n_total += 1
-                n_new += 1 if r.upserted_id else 0
-
-            if n_new > 0:
-                # Update simulation order book.
-                #asset = book[0:3]
-                #quadcx.update('CAD', asset.upper())
-                #smart_emit('updateTickers',None)
+                if r.upserted_id:
+                    log.debug('streaming new trade via socket.io connection')
+                    trade['ex'] = conf['NAME']
+                    trade['pair'] = pair
+                    smart_emit('newTrade', trade)
+                    n_new+=1
                 #log.debug('%s/%s new trades, exch=%s, book=%s', n_new, n_total, 'QuadrigaCX', book)
-                pass
 
 #---------------------------------------------------------------
 def save_orderbook():
     for conf in ex_confs():
-        api = g.db['sim_bots'].find_one({'name':API_BOT_NAME})['api'][0]
-        client = QuadrigaClient(api_key=api['key'], api_secret=api['secret'], client_id=CLIENT_ID)
+        api = g.db['sim_bots'].find_one({'name':ACTIVE_SIM_BOT})['api'][0]
+        client = QuadrigaClient(
+            api_key=api['key'],
+            api_secret=api['secret'],
+            client_id=conf['CLIENT_ID'])
 
         for pair in conf['PAIRS']:
             orders = client.get_public_orders(book=conf['PAIRS'][pair]['book'])

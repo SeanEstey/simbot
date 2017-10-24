@@ -51,6 +51,7 @@ EXCHANGES = [
     },
     {
         'NAME':'QuadrigaCX',
+        'CLIENT_ID':64288,
         'API_EXISTS':True,
         'API_ENABLED':True,
         'PAIRS': {
