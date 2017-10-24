@@ -43,10 +43,12 @@ a.nav-link {
     background-color:rgba(49,112,143,0);
     border-bottom:1px solid rgba(70, 74, 76, 0.35);
 }
-.l-pane {
-    height:100%;
+.left-frame {
+    color:white;
+    height:100vh;
     max-width:575px;
-    background-color:#136d8d /*#215e64;*/
+    text-align:left;
+    background-color:#136d8d;
 }
 .slide-panel {
     border:1px solid rgba(0, 0, 0, 0.14);

@@ -7,7 +7,7 @@ from app.lib.timer import Timer
 from bson import ObjectId as oid
 from app.main.sms import compose
 from app.main.socketio import smart_emit
-from app.main import indicators, simbooks, simex
+from app.main import indicators, simbooks, simex, tickers
 from config import PAIRS
 log = logging.getLogger(__name__)
 
@@ -219,7 +219,8 @@ class SimBot():
 
     #--------------------------------------------------------------------------
     def holdings(self):
-        from pprint import pformat
+        """SLOW!!!
+        """
         bot = g.db['sim_bots'].find_one({'_id':self._id})
         results = []
 
@@ -245,6 +246,7 @@ class SimBot():
                 'buy_price':b['price'],
                 'cost':b['amount'],
                 'status':b['status'],
+                'volume_sold': s[0]['volume'] if len(s)>0 else None,
                 'balance':b['volume'] - (s[0]['volume'] if len(s)>0 else 0),
                 'sell_price': s[0]['price'] if len(s)>0 else None,
                 'revenue':s[0]['revenue'] if len(s)>0 else None,
@@ -254,84 +256,38 @@ class SimBot():
         return results
 
     #--------------------------------------------------------------------------
-    def balance(self, ex=None, status=None):
-        """Returns dict: {'cad':float, 'btc':float}
-        """
+    def balance(self, ex=None):
         query = {'bot_id':self._id}
         if ex:
             query['ex'] = ex
-        #if status:
-        #    query['status'] = status
-
         balance = g.db['sim_balances'].aggregate([
             {'$match':query},
             {'$group':{
-                '_id':'',
-                'cad':{'$sum':'$cad'},
-                'btc':{'$sum':'$btc'},
-                'eth':{'$sum':'$eth'}
+              '_id':'', 'cad':{'$sum':'$cad'}, 'btc':{'$sum':'$btc'}, 'eth':{'$sum':'$eth'}
             }}
         ])
-        balance = list(balance)
-        return balance[0]
-
-    #--------------------------------------------------------------------------
-    def acct_balance(self, exch=None):
-        return list(g.db['accounts'].find({'bot_id':self._id}))
-
-    #--------------------------------------------------------------------------
-    def total_invested(self, exch=None, status=None):
-        query = {'bot_id':self._id}
-        if exch:
-            query['exchange'] = exch
-        if status:
-            query['status'] = status
-        cad_total = 0
-        holdings = g.db['holdings'].find(query)
-        for h in holdings:
-            cad_total += h['trades'][0]['volume'][1]
-        return cad_total
-
-    #--------------------------------------------------------------------------
-    def n_trades(self, exch=None, status=None):
-        query = {'bot_id':self._id}
-        if exch:
-            query['exchange'] = exch
-        if status:
-            query['status'] = status
-        n = 0
-        holdings = g.db['holdings'].find(query)
-        for h in holdings:
-            n += len(h['trades'])
-        return n
+        return list(balance)
 
     #--------------------------------------------------------------------------
     def stats(self, exch=None):
-        from app.main import tickers
-        return None
-        n_open = len(self.holdings(status='open'))
-        op_bal = self.balance(status='open')
-        op_btc_val = op_bal['btc'] * tickers.summary('QuadrigaCX', ('btc','cad'))
-        op_eth_val = op_bal['eth'] * tickers.summary('QuadrigaCX', ('eth','cad'))
+        """Return simulation stats to client.
+        """
+        balance = self.balance()
 
-        n_closed = len(self.holdings(status='closed'))
-        cl_bal = self.balance(status='closed')
-
-        earn = cl_bal['cad'] #- cl_bal['fees']
-        cad_invested = self.total_invested()
-        btc_gain = op_bal['cad']
+        if len(balance) > 0:
+            balance = balance[0]
+            t1 = tickers.summary('QuadrigaCX', ('btc','cad'))
+            btc_value = balance['btc'] * float(t1['last'])
+            t2 = tickers.summary('QuadrigaCX', ('eth','cad'))
+            eth_value = balance['eth'] * float(t2['last'])
 
         return {
-            'accounts': self.acct_balance(),
-            'n_trades': self.n_trades(),
-            'n_hold_open': n_open,
-            'n_hold_closed': n_closed,
-            'cad_traded': cad_invested*-1,
-            'btc': op_bal['btc'],
-            'eth': op_bal['eth'],
-            'btc_value': op_btc_val,
-            'eth_value': op_eth_val,
-            'earnings': earn
+            'cad': balance['cad'],
+            'btc': balance['btc'],
+            'eth': balance['eth'],
+            'btc_value': btc_value,
+            'eth_value': eth_value,
+            'traded': balance['cad'] + btc_value + eth_value
         }
 
     #--------------------------------------------------------------------------

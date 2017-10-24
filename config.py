@@ -18,8 +18,9 @@ ENV_VARS = [
     'HTTP_HOST',
     'TEST'
 ]
-SMS_ALERT_NUMBER = "+17808635715"
 
+# Exchange/Bot Config
+ACTIVE_SIM_BOT = 'Terry'
 EXCHANGES = [
     {
         'NAME': 'Coinsquare',
@@ -107,3 +108,4 @@ PAIRS = {
         'MIN_ARBIT_RATE': 25
     }
 }
+SMS_ALERT_NUMBER = "+17808635715"

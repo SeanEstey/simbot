@@ -1,62 +1,48 @@
 # app.main.endpoints
-from datetime import datetime, timedelta
-from dateutil.parser import parse
+from datetime import datetime
 from bson.json_util import dumps
-import logging, pprint
+import logging
 from flask import g, request
-log = logging.getLogger(__name__)
 from . import main
-from . import quadcx, coinsquare
 from .simbot import SimBot
+from config import ACTIVE_SIM_BOT
 
-@main.route('/test/series', methods=['GET'])
-def _test_series():
-    from app.main.tasks import update_client_indicators
-    update_client_indicators.delay(ndays=31)
-    return 'ok'
-
-@main.route('/indicators/get', methods=['POST'])
-def _get_ind():
-    get = request.form.get
-    series = list(
-        g.db['chart_series'].find({
-            'ex':get('ex'),
-            'pair':(get('asset'), 'cad'),
-            'start':{'$gte':datetime.fromtimestamp(int(get('since')))}
-        }).sort('start',1)
-    )
-    return dumps(series)
+log = logging.getLogger(__name__)
 
 @main.route('/stats/get', methods=['POST'])
 def get_earnings():
-    gary = SimBot('Terry')
-    return dumps(gary.stats())
+    return dumps(SimBot(ACTIVE_SIM_BOT).stats())
 
 @main.route('/holdings/get', methods=['POST'])
 def get_holdings():
-    bot = SimBot('Terry')
-    return dumps(bot.holdings())
+    return dumps(SimBot(ACTIVE_SIM_BOT).holdings())
 
 @main.route('/tickers/get', methods=['POST'])
 def get_tickers():
-    tickers = list(g.db['exchanges'].find())
-    return dumps(tickers)
+    return dumps(list(g.db['pub_tickers'].find()))
 
 @main.route('/trades/get', methods=['POST'])
 def get_trades():
     get = request.form.get
-    trades = list(
+    return dumps(list(
         g.db['pub_trades'].find({
-            'exchange':get('ex'),
-            'currency':get('asset'),
+            'ex':get('ex'),
+            'pair':(get('asset'),'cad'),
             'date':{'$gte':datetime.fromtimestamp(int(get('since')))}
-        }).sort('date',1)
-    )
-    return dumps(trades)
+        }).sort('date',1)))
+
+@main.route('/indicators/get', methods=['POST'])
+def _get_ind():
+    get = request.form.get
+    return dumps(list(
+        g.db['chart_series'].find({
+            'ex':get('ex'),
+            'pair':(get('asset'), 'cad'),
+            'start':{'$gte':datetime.fromtimestamp(int(get('since')))}
+        }).sort('start',1)))
 
 @main.route('/books/update', methods=['POST'])
 def _update_books():
-    exchange = request.form.get('exchange')
-    if exchange == 'Coinsquare':
+    if get('exchange') == 'Coinsquare':
         coinsquare.update('CAD', 'BTC')
     return 'OK'

@@ -78,9 +78,9 @@ function generateGroupCharts(ex, asset, period) {
             var raw = JSON.parse(json);
             var rsdata = resampleData(period, raw);
 
-            //priceChart.addSeries(rsdata, {label:'ask', ykey:'ask_price', decimals:2});
+            priceChart.addSeries(rsdata, {label:'ask', ykey:'ask_price', decimals:2});
             priceChart.addSeries(rsdata, {label:'price', ykey:'price', decimals:2});
-            //priceChart.addSeries(rsdata, {label:'bid', ykey:'bid_price', decimals:2});
+            priceChart.addSeries(rsdata, {label:'bid', ykey:'bid_price', decimals:2});
 
             ordBookChart.addSeries(rsdata, {label:'ask_vol', ykey:'ask_vol', decimals:3});
             ordBookChart.addSeries(rsdata, {label:'bid_vol', ykey:'bid_vol', decimals:3});

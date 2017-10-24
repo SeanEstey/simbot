@@ -5,172 +5,170 @@
   <script type="text/javascript" src="{{url_for("static", filename="main/js/simulation.js")}}"></script>
 {% endblock %}
 {% block postlibs %}
-
   <script> jQuery(function($){initMain()}) </script>
 {% endblock %}
 {% block content %}
-  <div class="container-fluid">
-    <div class="row" style="">
-      <!--Left Frame-->
-      <div id="side_frm" class="l-pane col-xl-2 col-12 text-center p-0">
-        <div style="margin:1.5rem;">
-          <div style="padding:1.0rem; color:white;">
-            <div class="text-left">
-              <h4 style="letter-spacing:1px;color:white;">[Simulation]</h4>
-              <h5 id="duration" style="font-family:monospace;">Duration:</h5>
-              <div class="text-left mt-3">
-                <hr style="background-color:white;">
-                <h5 class="mb-3">Overall</h5>
-                <div>    
-                  <div class="mb-3">
-                    <h2 id="earnings" style="color:lightgreen;" class="mt-0 mb-0"></h2>
-                    <div style="color:antiquewhite;">Earnings (CAD)</div>
-                  </div>
-                  <div>
-                    <h2 id="cad_traded" class="mt-0 mb-0" style="color:lightgreen"></h2>
-                    <div style="color:antiquewhite;">Traded (CAD)</div>
-                  </div>
-                </div>
-                <hr style="background-color:white;">
-                <h5 class="mb-3">Holdings</h5>
-                <span class="mt-3" style="color:lightgray"></span>
-                <div>
-                  <div>
-                    <span style="color:lightgray">BTC:</span>
-                    <span id="btc"></span>
-                  </div>
-                  <div>
-                    <span style="color:lightgray">ETH: </span>
-                    <span id="eth"></span>
-                  </div>
-                </div>
-                <hr style="background-color:white;">
-                <h5 class="mb-3">Statistics</h5>
-                <div>
-                  <span style="color:lightgray">Open Holdings: </span>
-                  <span id="n_hold_open"></span>
-                </div>
-                <div>
-                  <span style="color:lightgray">Closed Holdings: </span>
-                  <span id="n_hold_closed"></span>
-                </div> 
-                <div>
-                  <span style="color:lightgray">Total Trades: </span>
-                  <span id="n_trades"></span>
-                </div> 
+    <div class="row no-gutters">
+      <div class="col-12 col-xl-2">
+        <div class="left-frame p-4">
+          <h4 style="letter-spacing:1px;color:white;">Active Simulation</h4>
+          <h5 id="duration" style="font-family:monospace;" hidden>Duration:</h5>
+          <hr style="background-color:white;">
+          <h5 class="mb-3">Overall</h5>
+          <div>    
+            <div class="mb-3">
+              <h2 id="earnings" style="color:lightgreen;" class="mt-0 mb-0"></h2>
+              <div style="color:antiquewhite;">Earnings (CAD)</div>
+            </div>
+            <div>
+              <h2 id="traded" class="mt-0 mb-0" style="color:lightgreen"></h2>
+              <div style="color:antiquewhite;">Traded (CAD)</div>
+            </div>
+          </div>
+          <hr style="background-color:white;">
+          <h5 class="mb-3">Balance (Aggregate)</h5>
+          <span class="mt-3" style="color:lightgray"></span>
+          <div style="color:lightgreen">
+            <div>
+              <span style="color:lightgray">CAD: </span>
+              <span id="cad"></span>
+            </div>
+            <div>
+              <span style="color:lightgray">BTC:&nbsp;</span>
+              <span id="btc"></span>
+            </div>
+            <div>
+              <span style="color:lightgray">ETH:&nbsp;</span>
+              <span id="eth"></span>
+            </div>
+          </div>
+          <hr style="background-color:white;">
+          <h5 class="mb-3">Holdings</h5>
+          <div>
+            <span style="color:lightgray">Open: </span>
+            <span id="n_hold_open"></span>
+          </div>
+          <div>
+            <span style="color:lightgray">Closed: </span>
+            <span id="n_hold_closed"></span>
+          </div> 
+          <div>
+            <span style="color:lightgray">Trades: </span>
+            <span id="n_trades"></span>
+          </div> 
+          <hr style="background-color:white">
+          <div>
+            <h5 class="mb-3">Controls</h5>
+            <button id="btn-default" type="button" class="btn btn-info my-2" data-dismiss="modal">Pause</button>
+            <button id="btn-default" type="button" class="btn btn-info my-2" data-dismiss="modal">Reset</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-xl-10">
+        <!--Main Frame-->
+        <div id="main_frm" class="p-3">
+          <!--Markets Panel-->
+          <div id="markets" class="slide-panel mb-4">
+            <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+              <span><h5 class="mb-0">Markets</h5></span>
+              <span class="min-max pull-right" data-toggle="collapse" data-target="#mkt-bdy" style="color:#74480a">
+                <i class="fa fa-window-minimize text-right"></i>
+              </span>
+            </div>
+            <div id="mkt-bdy" class="panel-bdy collapse show">
+              <div class="analy-hdr text-left pt-3 px-3">
+                <label class="custom-control custom-checkbox">
+                  <input name="QuadrigaCX" type="checkbox" class="custom-control-input">
+                  <span class="custom-control-indicator"></span>
+                  <span class="custom-control-description">QuadrigaCX</span>
+                </label>
+                <label class="custom-control custom-checkbox">
+                  <input name="Coinsquare" type="checkbox" class="custom-control-input">
+                  <span class="custom-control-indicator"></span>
+                  <span class="custom-control-description">Coinsquare</span>
+                </label>
+                <label class="custom-control custom-checkbox">
+                  <input name="Kraken" type="checkbox" class="custom-control-input">
+                  <span class="custom-control-indicator"></span>
+                  <span class="custom-control-description">Kraken</span>
+                </label>
+                <label class="mr-4">
+                  <select name="asset" aria-controls="chart" class="form-control form-control-sm">
+                    <option value="btc">BTC</option>
+                    <option value="eth">ETH</option>
+                  </select>
+                </label>
+                <label class="mr-4">
+                  <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
+                    <option value="1d">1 Day</option>
+                    <option value="7d">1 Week</option>
+                    <option value="1m">1 Month</option>
+                    <option value="3m">3 Months</option>
+                    <option value="6m">6 Months</option>
+                    <option value="ytd">YTD</option>
+                    <option value="1y">1 Year</option>
+                    <option value="all">All</option>
+                  </select>
+                </label>
+              </div>
+              <div class="chart text-center p-0" style="width:100%; height:100%;" id="chart-contr"> 
+                <canvas id="spinner" style="width:1198px; height:100%"></canvas>
+                <!--Morris.js Chart-->
               </div>
             </div>
           </div>
-         </div>
-      </div>
-      <!--Main Frame-->
-      <div id="main_frm" class="col-12 col-xl-10 p-5">
-        <!--Markets Panel-->
-        <div id="markets" class="slide-panel mb-4">
-          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-            <span><h3 class="mb-0">Markets</h3></span>
-            <span class="min-max pull-right" data-toggle="collapse" data-target="#mkt-bdy" style="color:#74480a">
-              <i class="fa fa-window-minimize text-right"></i>
-            </span>
-          </div>
-          <div id="mkt-bdy" class="panel-bdy collapse show">
-            <div class="analy-hdr text-left pt-3 px-3">
-              <label class="custom-control custom-checkbox">
-                <input name="QuadrigaCX" type="checkbox" class="custom-control-input">
-                <span class="custom-control-indicator"></span>
-                <span class="custom-control-description">QuadrigaCX</span>
-              </label>
-              <label class="custom-control custom-checkbox">
-                <input name="Coinsquare" type="checkbox" class="custom-control-input">
-                <span class="custom-control-indicator"></span>
-                <span class="custom-control-description">Coinsquare</span>
-              </label>
-              <label class="custom-control custom-checkbox">
-                <input name="Kraken" type="checkbox" class="custom-control-input">
-                <span class="custom-control-indicator"></span>
-                <span class="custom-control-description">Kraken</span>
-              </label>
-              <label class="mr-4">
-                <select name="asset" aria-controls="chart" class="form-control form-control-sm">
-                  <option value="btc">BTC</option>
-                  <option value="eth">ETH</option>
-                </select>
-              </label>
-              <label class="mr-4">
-                <select name="time_lbl" aria-controls="chart" class="form-control form-control-sm">
-                  <option value="1d">1 Day</option>
-                  <option value="7d">1 Week</option>
-                  <option value="1m">1 Month</option>
-                  <option value="3m">3 Months</option>
-                  <option value="6m">6 Months</option>
-                  <option value="ytd">YTD</option>
-                  <option value="1y">1 Year</option>
-                  <option value="all">All</option>
-                </select>
-              </label>
+          <!--Holdings Panel-->
+          <div id="holdings" class="slide-panel mb-4">
+            <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+              <span><h5 class="mb-0">Holdings</h5></span>
+              <span class="min-max pull-right" data-toggle="collapse" data-target="#hld-bdy">
+                <i class="fa fa-window-minimize text-right"></i>
+              </span>
             </div>
-            <div class="chart text-center p-0" style="width:100%; height:100%;" id="chart-contr"> 
-              <canvas id="spinner" style="width:1198px; height:100%"></canvas>
-              <!--Morris.js Chart-->
+            <div id="hld-bdy" class="panel-bdy collapse show">
+              <div id="filters">
+                <label class="fa fa-filter mr-4" style="font-size:1.25rem;">
+                </label>
+                <label id="filtr-assets" class="mr-4"> 
+                  <select name="dt-holdings_asset" aria-controls="dt-holdings" class="form-control form-control-sm">
+                    <option value="btc">BTC</option>
+                    <option value="eth">ETH</option>
+                    <option value="-1">All</option>
+                  </select>
+                </label>
+                <label id="fltr-exch" class="mr-4"> 
+                  <select name="dt-holdings_ex" aria-controls="dt-holdings" class="form-control form-control-sm"
+                  style="width:100%!important">
+                    <option value="btc">QuadrigaCX</option>
+                    <option value="eth">Coinsquare</option>
+                    <option value="-1">All</option>
+                  </select>
+                </label>
+                <label id="fltr-status" class="mr-4"> 
+                  <select name="dt-holdings_status" aria-controls="dt-holdings" class="form-control form-control-sm">
+                    <option value="btc">Open</option>
+                    <option value="eth">Closed</option>
+                    <option value="-1">All</option>
+                  </select>
+                </label>
+              </div>
+              <!--Datatable-->
+              <table id="dt-holdings" class="table table-responsive table-striped dataTable" hidden></table>
+            </div>
+          </div>
+          <!--Ticker Panel-->
+          <div id="tickers-pnl" class="slide-panel mb-4" hidden>
+            <div class="panel-hdr d-flex justify-content-between py-2 px-3">
+              <span><h3 class="mb-0">Tickers</h3></span>
+              <span class="min-max pull-right" data-toggle="collapse" data-target="#ticker-bdy" style="color:#74480a">
+                <i class="fa fa-window-minimize text-right"></i>
+              </span>
+            </div>
+            <div id="ticker-bdy" class="panel-bdy collapse show">
+              <div id="tickers" class="p-4"></div>
             </div>
           </div>
         </div>
-        <!--Holdings Panel-->
-        <div id="holdings" class="slide-panel mb-4">
-          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-            <span><h3 class="mb-0">Holdings</h3></span>
-            <span class="min-max pull-right" data-toggle="collapse" data-target="#hld-bdy">
-              <i class="fa fa-window-minimize text-right"></i>
-            </span>
-          </div>
-          <div id="hld-bdy" class="panel-bdy collapse show">
-            <div id="filters">
-              <label class="fa fa-filter mr-4" style="font-size:1.25rem;">
-              </label>
-              <label id="filtr-assets" class="mr-4"> 
-                <select name="dt-holdings_asset" aria-controls="dt-holdings" class="form-control form-control-sm">
-                  <option value="btc">BTC</option>
-                  <option value="eth">ETH</option>
-                  <option value="-1">All</option>
-                </select>
-              </label>
-              <label id="fltr-exch" class="mr-4"> 
-                <select name="dt-holdings_ex" aria-controls="dt-holdings" class="form-control form-control-sm"
-                style="width:100%!important">
-                  <option value="btc">QuadrigaCX</option>
-                  <option value="eth">Coinsquare</option>
-                  <option value="-1">All</option>
-                </select>
-              </label>
-              <label id="fltr-status" class="mr-4"> 
-                <select name="dt-holdings_status" aria-controls="dt-holdings" class="form-control form-control-sm">
-                  <option value="btc">Open</option>
-                  <option value="eth">Closed</option>
-                  <option value="-1">All</option>
-                </select>
-              </label>
-            </div>
-            <!--Datatable-->
-            <table id="dt-holdings" class="table table-responsive table-striped dataTable" hidden></table>
-          </div>
-        </div>
-
-        <!--Ticker Panel-->
-        <div id="tickers-pnl" class="slide-panel mb-4" hidden>
-          <div class="panel-hdr d-flex justify-content-between py-2 px-3">
-            <span>
-              <h3 class="mb-0">Tickers</h3>
-            </span>
-            <span class="min-max pull-right" data-toggle="collapse" data-target="#ticker-bdy" style="color:#74480a">
-              <i class="fa fa-window-minimize text-right"></i>
-            </span>
-          </div>
-          <div id="ticker-bdy" class="panel-bdy collapse show">
-            <div id="tickers" class="p-4">
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   {% endblock %}

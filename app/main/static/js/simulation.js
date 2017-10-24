@@ -14,12 +14,10 @@ orderBookCharts = null;
 function initMain() {
     initSlidePanel('holdings');
     initSlidePanel('markets');
-
     showBotSummary();
-    showExchTickers();
+    showTickers();
     showHoldingsTable();
     showMarketChart();
-
     initEventHandlers();
     initSocketIO();
 }
@@ -48,10 +46,16 @@ function initSocketIO() {
 function initEventHandlers() {
     $(window).resize(function(){
         // Adjust side frame height to 100%
-        $('#side_frm').height($(window).height() - $('.navbar').height());
-        //$('#main_frm').height());// - $(".navbar").height());
+        var mainFrameHgt = $('#main_frm').height();
+        var winHgt = window.innerHeight;
+
+        if(mainFrameHgt > winHgt)
+            $('.left-frame').height(mainFrameHgt - $('.navbar').height());
+        else
+            $('.left-frame').height(winHgt);
+        //$('#side_frm').height($('body').height() - $('.navbar').height());
     })
-    $(window).resize();
+    //$(window).resize();
 }
 
 //------------------------------------------------------------------------------
@@ -121,28 +125,43 @@ function showMarketChart() {
 
 //------------------------------------------------------------------------------
 function showBotSummary() {
-
-    return;
-
     api_call('/stats/get',
         null,
         function(response){
             var stats = JSON.parse(response);
-            $('#earnings').html('$'+abbr(stats['earnings'],1));
-            $('#cad_traded').html('$'+abbr(stats['cad_traded'],1));
+            console.log(stats);
+            $('#traded').html('$'+abbr(stats['traded'],1));
+            upd_val($('#cad'), '$'+abbr(stats['cad'],1));
             upd_val($('#btc'), num_format(stats['btc'],5));
             upd_val($('#eth'), num_format(stats['eth'],5));
-            upd_val($('#n_hold_open'), num_format(stats['n_hold_open']));
-            upd_val($('#n_hold_closed'), num_format(stats['n_hold_closed']));
-            upd_val($('#n_trades'), num_format(stats['n_trades']));
         }
     );
 }
 
 //------------------------------------------------------------------------------
-function showExchTickers() {
-    return;
+function holdingsStats() {
+    upd_val($('#n_trades'), num_format(gHoldings.length));
 
+    var net_earn = n_open = n_close = 0;
+    for(var i=0; i<gHoldings.length; i++) {
+        var hold = gHoldings[i];
+        if(hold['status'] == 'open') {
+            n_open++;
+        }
+        else {
+            net_earn += hold['revenue'] - hold['cost'] - hold['fees'];
+            n_close++;
+        }
+    }
+
+    upd_val($('#n_hold_open'), num_format(n_open));
+    upd_val($('#n_hold_closed'), num_format(n_close));
+    upd_val($('#earnings'), '$'+abbr(net_earn,1));
+}
+
+//------------------------------------------------------------------------------
+function showTickers() {
+    return;
     api_call('/tickers/get',
         null,
         function(response){
@@ -229,6 +248,7 @@ function showHoldingsTable() {
                 formatData()
             );
             applyCustomization(TBL_ID);
+            holdingsStats();
             //calcSimDuration();
         });
 }
@@ -244,6 +264,6 @@ function calcSimDuration() {
 //------------------------------------------------------------------------------
 function upd_val($elem, val) {
     $elem.html(val);
-    $elem.css('background-color','rgba(255,255,0,1.0');
-    $elem.animate({'background-color':'rgba(255,255,255,0.0)'},1000);
+    //$elem.css('background-color','rgba(255,255,0,1.0');
+    //$elem.animate({'background-color':'rgba(255,255,255,0.0)'},1000);
 }

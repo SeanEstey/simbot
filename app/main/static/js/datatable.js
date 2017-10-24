@@ -55,7 +55,7 @@ gColumnDefs = [
     {
         column: { title:'Volume Sold' },
         columnDef: { },
-        data: { k:'balance', value:function(x){ return nformat(x,5) } }
+        data: { k:'volume_sold', value:function(x){ return x? nformat(x,5) : '' } }
     },
     {
         column: { title:'Revenue' },
@@ -74,7 +74,7 @@ gColumnDefs = [
             k:null,
             value:function(x) {
                 if(x['status'] == 'closed') {
-                    var net_earn = x['revenue'] - x['cost'] + x['fees'];
+                    var net_earn = x['revenue'] - x['cost'] - x['fees'];
                     return sformat(net_earn, '$', 2);
                 } 
                 else
