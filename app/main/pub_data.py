@@ -4,6 +4,7 @@ from time import sleep
 from datetime import datetime
 from app import celery
 from flask import g
+from bson.json_util import dumps
 from app.main import ex_confs
 from app.main import quadcx
 from app.main.socketio import smart_emit
@@ -44,10 +45,9 @@ def save_trades():
                     True)
                 n_total += 1
                 if r.upserted_id:
-                    log.debug('streaming new trade via socket.io connection')
                     trade['ex'] = conf['NAME']
                     trade['pair'] = pair
-                    smart_emit('newTrade', trade)
+                    smart_emit('updateGraphStream', dumps({'type':'trade', 'data':trade}))
                     n_new+=1
                 #log.debug('%s/%s new trades, exch=%s, book=%s', n_new, n_total, 'QuadrigaCX', book)
 
@@ -70,10 +70,13 @@ def save_orderbook():
                 asks[0] = float(asks[0])
                 asks[1] = float(asks[1])
 
-            g.db['pub_books'].insert_one({
+            document = {
                 'ex':conf['NAME'],
                 'pair':pair,
                 'date':datetime.fromtimestamp(int(orders['timestamp'])+(3600*6)),
                 'bids':orders['bids'],
                 'asks':orders['asks']
-            })
+            }
+
+            g.db['pub_books'].insert_one(document)
+            smart_emit('updateGraphStream', dumps({'type':'orderbook', 'data':document}))

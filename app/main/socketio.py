@@ -1,5 +1,5 @@
 # app.main.socketio
-from flask import g
+from flask import g, current_app, has_app_context
 from flask_socketio import SocketIO, emit
 from logging import getLogger
 log = getLogger(__name__)
@@ -33,13 +33,11 @@ def _on_error(e):
 #-------------------------------------------------------------------------------
 @sio_server.on('connect')
 def sio_connect():
-    #log.debug('socket.io connected')
     pass
 
 #-------------------------------------------------------------------------------
 @sio_server.on('disconnect')
 def sio_disconnect():
-    #log.debug('socket.io disconnect')
     pass
 
 #-------------------------------------------------------------------------------

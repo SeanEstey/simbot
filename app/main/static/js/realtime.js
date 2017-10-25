@@ -18,39 +18,90 @@ SERIES_CONF = [
 ];
 
 // Globals 
-BASE_URL = "http://45.79.176.125";
 graph = null;
+BASE_URL = "http://45.79.176.125";
+ticksTreatment = 'glow';
 periodLabel = '1d';
 exchange = 'QuadrigaCX';
 asset = 'btc';
-ticksTreatment = 'glow';
-seriesData = [];
+pair = ['btc','cad'];
+seriesData = [
+    {name:'Bids', renderer:'line', color:'red', data:[]},
+    {name:'Asks', renderer:'line', color:'green', data:[]},
+    {name:'Trades', renderer:'line', color:'steelblue', data:[]}
+];
 
 //------------------------------------------------------------------------------
 function initMain() {
+    initGraph();
     initSocketIO();
+}
 
-    $.ajax({
-        type: 'POST',
-        url: BASE_URL + '/indicators/get',
-        data:{
-            ex:exchange,
-            asset:asset,
-            since:getTimespan(periodLabel, units='s')[0] + (3600*6), // convert to UTC
-            until:getTimespan(periodLabel, units='s')[1] + (3600*6)
-        },
-        async:true,
-        context: this,
-        success:function(json){
-            var raw = JSON.parse(json);
-            var resampled = resampleData('1d', raw);
-            seriesData = resampled.map(function(elem) {
-                return {x:elem['date']/1000, y:elem['price']}
-            });
-            fillDataGaps(seriesData);
-            renderChart(seriesData);
+//------------------------------------------------------------------------------
+function onUpdateGraphStream(response) {
+    var response = JSON.parse(response);
+    var data = response['data'];
+
+    if(data['ex'] != exchange || data['pair'].join("_") != pair.join("_"))
+        return;
+
+    console.log(response);
+
+    if(response['type'] == 'orderbook') {
+        var vtot = seriesData[2]['data'][seriesData[2]['data'].length-1]['x'];
+
+        // Graph Asks
+        var vask = vtot;
+        seriesData[1]['data'] = data['asks'].map(function(n){
+            vask+=n[1]; 
+            return { x:vask, y:n[0] };
+        });
+
+        // Graph Bids
+        var vbid = vtot;
+        seriesData[0]['data'] = data['bids'].map(function(n){
+            vbid += n[1];
+            return { x:vbid, y:n[0] };
+        });
+        var spliceIdx=0;
+        for(var i=0; i<seriesData[0]['data'].length; i++) {
+            var vol = seriesData[0]['data'][i]['x'];
+            if(vol - vtot > 75) {
+                spliceIdx=i;
+                break;
+            }
         }
+        if(spliceIdx > 0) {
+            var len = seriesData[0]['data'].length;
+            seriesData[0]['data'].splice(spliceIdx, len-1);
+        }
+    }
+    else if(response['type'] == 'trade') {
+        var len = seriesData[2]['data'].length;
+        var v_tot = 0;
+        if(len > 0)
+            v_tot = seriesData[2]['data'][len-1]['x'];
+        //if(len > 100)
+        //    seriesData[2]['data'].splice(0,1);
+        seriesData[2]['data'].push({
+            x:Number(v_tot + Number(data['amount'])),
+            y:Number(data['price'])
+        });
+    }
+
+    graph.update();
+}
+
+//------------------------------------------------------------------------------
+function onInitGraphStream(response) {
+    var data = JSON.parse(response);
+    console.log(data);
+    var v_total = 0;
+    seriesData[2]['data'] = data.map(function(n) {
+        v_total += n['volume'];
+        return {x:v_total, y:Number(n['price'])}
     });
+    graph.update();
 }
 
 //------------------------------------------------------------------------------
@@ -58,33 +109,25 @@ function initSocketIO() {
     socket = io.connect(BASE_URL);
     socket.on('connect', function(){
         console.log('socket.io connected!');
+        socket.emit('initGraphStream');
     });
-    socket.on('newTrade', function(data){
-        if(data['pair'].join("_") != "btc_cad")
-            return;
 
-        seriesData.splice(0,1);
-        var d = {x:Number(data['date']), y:Number(data['price'])};
-        seriesData.push(d);
-        graph.update();
-        console.log('updating graph w/ new trade');
-    });
+    socket.on('initGraphStream', onInitGraphStream);
+    socket.on('updateGraphStream', onUpdateGraphStream);
 }
 
 //------------------------------------------------------------------------------
-function renderChart(data) {
+function initGraph() {
     var palette = new Rickshaw.Color.Palette( { scheme: 'classic1' } );
-    var graph = new Rickshaw.Graph( {
+    graph = new Rickshaw.Graph( {
         element: getElemById("chart"),
-        //width: 900,
         height: 500,
-        renderer: 'area',
+        renderer: 'line',
+        interpolation:'linear',
         min:'auto',
-        stroke: true,
-        preserve: true,
-        series: [
-            {color:'steelblue', data:data, name:'QuadrigaCX'}
-        ]
+        //stroke: true,
+        //preserve: true,
+        series: seriesData 
     } );
     graph.render();
 
@@ -98,13 +141,14 @@ function renderChart(data) {
         {graph:graph, legend:legend});
     var hoverDetail = new Rickshaw.Graph.HoverDetail(
         {graph:graph, xFormatter:function(x) {return new Date(x*1000).toString();}});
-    var xAxis = new Rickshaw.Graph.Axis.Time(
-        {graph:graph}); //, ticksTreatment:ticksTreatment, timeFixture:new Rickshaw.Fixtures.Time.Local()});
+    var xAxis = new Rickshaw.Graph.Axis.X(
+        {graph:graph});
     xAxis.render();
-    var yAxis = new Rickshaw.Graph.Axis.Y(
-        {graph:graph, tickFormat:Rickshaw.Fixtures.Number.formatKMBT});
+    var yAxis = new Rickshaw.Graph.Axis.Y({
+        graph:graph, orientation:'left', tickFormat:Rickshaw.Fixtures.Number.formatKMBT,
+        element:getElemById('y_axis')
+    });
     yAxis.render();
-
     //var annotator = new Annotate(
     //    {graph:graph, element:getElemById('timeline')});
     //addAnnotations(annotator, random);
@@ -112,35 +156,6 @@ function renderChart(data) {
 
 function getElemById(_id){ return document.getElementById(_id); }
 function querySelector(name){ return document.querySelector(name); }
-
-//------------------------------------------------------------------------------
-function addAnnotations(annotator, random) {
-    var messages = [
-        "Changed home page welcome message",
-        "Minified JS and CSS",
-        "Changed button color from blue to green",
-        "Refactored SQL query to use indexed columns",
-        "Added additional logging for debugging",
-        "Fixed typo",
-        "Rewrite conditional logic for clarity",
-        "Added documentation for new methods"
-    ];
-
-    setInterval( function() {
-        random.removeData(seriesData);
-        random.addData(seriesData);
-        graph.update();
-    }, 3000);
-
-    function addAnnotation(force) {
-        if (messages.length > 0 && (force || Math.random() >= 0.95)) {
-            annotator.add(seriesData[2][seriesData[2].length-1].x, messages.shift());
-            annotator.update();
-        }
-    }
-    addAnnotation(true);
-    setTimeout( function() { setInterval( addAnnotation, 6000 ) }, 6000 );
-}
 
 //------------------------------------------------------------------------------
 function resampleData(period, data) {

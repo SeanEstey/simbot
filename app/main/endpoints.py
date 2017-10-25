@@ -2,12 +2,38 @@
 from datetime import datetime
 from bson.json_util import dumps
 import logging
-from flask import g, request
+from flask import g, request, current_app
 from . import main
 from .simbot import SimBot
 from config import ACTIVE_SIM_BOT
 
 log = logging.getLogger(__name__)
+
+from app.main.socketio import sio_server, smart_emit
+
+@sio_server.on('initGraphStream')
+def init_graph():
+    log.debug('initGraphStream!')
+    db = current_app.db_client['simbot']
+
+    smart_emit(
+        'initGraphStream',
+        dumps(list(
+            db['pub_trades'].find({'ex':'QuadrigaCX', 'pair':('btc','cad')}
+            ).sort('date',-1).limit(500))
+        )
+    )
+
+@main.route('/books/get', methods=['POST'])
+def get_books():
+    get = request.form.get
+    return dumps(
+        list(
+            g.db['pub_books'].find_one(
+                {'ex':get('ex'), 'pair':(get('asset'),'cad')}
+            ).sort('date',-1).limit(1)
+        )[0]
+    )
 
 @main.route('/stats/get', methods=['POST'])
 def get_earnings():
