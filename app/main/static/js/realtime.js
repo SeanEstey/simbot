@@ -18,119 +18,139 @@ SERIES_CONF = [
 ];
 
 // Globals 
-graph = null;
+xAxis = yAxis = graph = null;
+height = 800;
 BASE_URL = "http://45.79.176.125";
 ticksTreatment = 'glow';
 periodLabel = '1d';
 exchange = 'QuadrigaCX';
 asset = 'btc';
 pair = ['btc','cad'];
-seriesData = [
-    {name:'Bids', renderer:'line', color:'red', data:[]},
-    {name:'Asks', renderer:'line', color:'green', data:[]},
-    {name:'Trades', renderer:'line', color:'steelblue', data:[]}
-];
+ask_min = ask_max = bid_min = bid_max = trade_min = trade_max = 0;
+seriesData = {
+    'trades':{name:'Trades', scale:null, renderer:'line', color:'steelblue', data:[]},
+    'asks': {name:'Asks', renderer:'line', color:'green', data:[]},
+    'bids': {name:'Bids', renderer:'line', color:'red', data:[]}
+};
 
 //------------------------------------------------------------------------------
 function initMain() {
     initGraph();
-    initSocketIO();
-}
 
-//------------------------------------------------------------------------------
-function onUpdateGraphStream(response) {
-    var response = JSON.parse(response);
-    var data = response['data'];
-
-    if(data['ex'] != exchange || data['pair'].join("_") != pair.join("_"))
-        return;
-
-    console.log(response);
-
-    if(response['type'] == 'orderbook') {
-        var vtot = seriesData[2]['data'][seriesData[2]['data'].length-1]['x'];
-
-        // Graph Asks
-        var vask = vtot;
-        seriesData[1]['data'] = data['asks'].map(function(n){
-            vask+=n[1]; 
-            return { x:vask, y:n[0] };
-        });
-
-        // Graph Bids
-        var vbid = vtot;
-        seriesData[0]['data'] = data['bids'].map(function(n){
-            vbid += n[1];
-            return { x:vbid, y:n[0] };
-        });
-        var spliceIdx=0;
-        for(var i=0; i<seriesData[0]['data'].length; i++) {
-            var vol = seriesData[0]['data'][i]['x'];
-            if(vol - vtot > 75) {
-                spliceIdx=i;
-                break;
-            }
-        }
-        if(spliceIdx > 0) {
-            var len = seriesData[0]['data'].length;
-            seriesData[0]['data'].splice(spliceIdx, len-1);
-        }
-    }
-    else if(response['type'] == 'trade') {
-        var len = seriesData[2]['data'].length;
-        var v_tot = 0;
-        if(len > 0)
-            v_tot = seriesData[2]['data'][len-1]['x'];
-        //if(len > 100)
-        //    seriesData[2]['data'].splice(0,1);
-        seriesData[2]['data'].push({
-            x:Number(v_tot + Number(data['amount'])),
-            y:Number(data['price'])
-        });
-    }
-
-    graph.update();
-}
-
-//------------------------------------------------------------------------------
-function onInitGraphStream(response) {
-    var data = JSON.parse(response);
-    console.log(data);
-    var v_total = 0;
-    seriesData[2]['data'] = data.map(function(n) {
-        v_total += n['volume'];
-        return {x:v_total, y:Number(n['price'])}
-    });
-    graph.update();
-}
-
-//------------------------------------------------------------------------------
-function initSocketIO() {
     socket = io.connect(BASE_URL);
     socket.on('connect', function(){
         console.log('socket.io connected!');
-        socket.emit('initGraphStream');
+        socket.emit('initGraphData');
     });
+    socket.on('updateGraphData', function(response) {
+        var data = JSON.parse(response);
 
-    socket.on('initGraphStream', onInitGraphStream);
-    socket.on('updateGraphStream', onUpdateGraphStream);
+        if(data.hasOwnProperty('trades'))
+            updateGraphTrades(data['trades']);
+        if(data.hasOwnProperty('orderbook'))
+            updateGraphOrderBook(data['orderbook']);
+
+        var linearScale = d3.scale.linear().domain([
+            Math.min(trade_min, bid_min),
+            Math.max(trade_max, ask_max)
+        ]);
+        var logScale = d3.scale.log().domain([
+            Math.min(trade_min, bid_min),
+            Math.max(trade_max, ask_max)
+        ]);
+        seriesData.asks.scale = seriesData.bids.scale = seriesData.trades.scale = logScale;    
+
+        if(!yAxis) {
+            yAxis = new Rickshaw.Graph.Axis.Y.Scaled({
+                graph:graph,
+                orientation:'left',
+                tickFormat:Rickshaw.Fixtures.Number.formatKMBT,
+                ticksTreatment:ticksTreatment,
+                element:getElemById('y_axis'),
+                scale:linearScale
+            });
+            yAxis.render();
+        }
+        else {
+            yAxis.scale = linearScale;
+        }
+
+        graph.update();
+    });
+}
+
+//------------------------------------------------------------------------------
+function updateGraphTrades(trades) {
+    if(trades[0].ex != exchange || trades[0].pair.join("_") != pair.join("_"))
+        return;
+
+    // Reverse array order to chronological
+    trades = trades.reverse();
+
+    var data = seriesData.trades.data;
+    var v_traded = data.length > 0 ? data.slice(-1)[0].x : 0.0;
+    data = data.concat(
+        trades.map(function(n) { return {
+            x: v_traded+=n.volume,
+            y: n.price
+        }})
+    );
+    trade_min = arrDim('min', data.map(obj => obj.y));
+    trade_max = arrDim('max', data.map(obj => obj.y));
+    var tradeScale = d3.scale.log().domain([trade_min, trade_max]);
+    seriesData.trades.data = data;
+
+    console.log(format('new trades=%s, existing=%s', trades.length, seriesData.trades.data.length));
+}
+
+//------------------------------------------------------------------------------
+function updateGraphOrderBook(data) {
+    if(data.ex != exchange || data.pair.join("_") != pair.join("_"))
+        return;
+
+    var orders = {asks:data.asks, bids:data.bids};
+    // What's the cumulative volume of the trades already graphed?
+    var v_cum = v_traded = seriesData.trades.data.slice(-1)[0].x;
+
+    var asks = orders.asks.map(function(n){ return {x:v_cum+=n[1], y:n[0]} });
+    ask_min = arrDim('min', asks.map(obj => obj.y));
+    ask_max = arrDim('max', asks.map(obj => obj.y));
+
+    v_cum = v_traded;
+    var bids = orders.bids.map(function(n){ return {x:v_cum+=n[1], y:n[0]} });
+    bid_min = arrDim('min', bids.map(obj => obj.y));
+    bid_max = arrDim('max', bids.map(obj => obj.y));
+
+    seriesData.asks.data = asks;
+    seriesData.bids.data = bids;
+
+    return;
+
+    // Chop off overly long bid volumes from graph.
+    // Find way to do this with logscale instead
+    var idx=0;
+    for(idx=0; idx<bids.length; idx++) {
+        if(bids[idx].x-v_traded > 75) break;
+    }
+    //if(idx > 0)
+    //    bids.splice(idx, bids.length-1);
+    //console.log(format('bid_min=%s, bid_max=%s, ask_min=%s, ask_max=%s',
+    //    bid_min, bid_max, ask_min, ask_max));
 }
 
 //------------------------------------------------------------------------------
 function initGraph() {
-    var palette = new Rickshaw.Color.Palette( { scheme: 'classic1' } );
-    graph = new Rickshaw.Graph( {
+    graph = new Rickshaw.Graph({
         element: getElemById("chart"),
-        height: 500,
+        height: height,
         renderer: 'line',
-        interpolation:'linear',
-        min:'auto',
-        //stroke: true,
-        //preserve: true,
-        series: seriesData 
-    } );
-    graph.render();
-
+        interpolation:'step',
+        series: [
+            seriesData['trades'],
+            seriesData['bids'],
+            seriesData['asks']
+        ]
+    });
     var legend = new Legend(
         {graph:graph, element:getElemById('legend')});
     var toggle = new SeriesToggle(
@@ -140,18 +160,13 @@ function initGraph() {
     var highlighter = Highlight(
         {graph:graph, legend:legend});
     var hoverDetail = new Rickshaw.Graph.HoverDetail(
-        {graph:graph, xFormatter:function(x) {return new Date(x*1000).toString();}});
-    var xAxis = new Rickshaw.Graph.Axis.X(
-        {graph:graph});
-    xAxis.render();
-    var yAxis = new Rickshaw.Graph.Axis.Y({
-        graph:graph, orientation:'left', tickFormat:Rickshaw.Fixtures.Number.formatKMBT,
-        element:getElemById('y_axis')
+        {graph:graph, xFormatter:function(x) {return x;}});
+    var xAxis = new Rickshaw.Graph.Axis.X({
+        graph:graph,
+        grid:false
     });
-    yAxis.render();
-    //var annotator = new Annotate(
-    //    {graph:graph, element:getElemById('timeline')});
-    //addAnnotations(annotator, random);
+    xAxis.render();
+    graph.render();
 }
 
 function getElemById(_id){ return document.getElementById(_id); }
@@ -263,4 +278,12 @@ function fillDataGaps(data) {
             }
         }
     }
+}
+
+//------------------------------------------------------------------------------
+function arrDim(name, arr) {
+    if(name == 'min')
+        return arr.reduce(function(a,b){ return Math.min(a,b) });
+    else if(name == 'max')
+        return arr.reduce(function(a,b){ return Math.max(a,b) });
 }

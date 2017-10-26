@@ -11,8 +11,14 @@
   <script> jQuery(function($){initMain()}) </script>
 {% endblock %}
 {% block content %}
-  <div class="container-fluid p-4">
-    <div class="row">
+  <div class="container-fluid p-5">
+    <div class="d-flex" id="chart_container">
+      <div id="y_axis" style="height:800px; width:40px"></div>
+      <div id="chart"
+      style="width:100%; background-color:whitesmoke; border:1px solid rgba(0,0,0,0.13);"></div>
+    </div>
+
+    <div class="row" hidden>
       <div class="col-12 col-xl-12">
         <div id="panel" class="slide-panel mb-4">
           <div class="panel-hdr d-flex justify-content-between py-2 px-3">
@@ -22,10 +28,7 @@
             </span>
           </div>
           <div id="panel-bdy" class="panel-bdy collapse show">
-            <div class="d-flex" id="chart_container">
-              <div id="y_axis" style="height:500px; width:40px"></div>
-              <div id="chart" style="width:100%"></div>
-            </div>
+
             <div class="row" hidden>
               <div class="col-xl-12">
                 <div id="legend_container" class="pull-right">

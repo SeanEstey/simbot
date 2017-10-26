@@ -11,18 +11,14 @@ log = logging.getLogger(__name__)
 
 from app.main.socketio import sio_server, smart_emit
 
-@sio_server.on('initGraphStream')
+@sio_server.on('initGraphData')
 def init_graph():
-    log.debug('initGraphStream!')
     db = current_app.db_client['simbot']
-
-    smart_emit(
-        'initGraphStream',
-        dumps(list(
-            db['pub_trades'].find({'ex':'QuadrigaCX', 'pair':('btc','cad')}
-            ).sort('date',-1).limit(500))
-        )
-    )
+    query = {'ex':'QuadrigaCX', 'pair':('btc','cad')}
+    smart_emit('updateGraphData', dumps({
+        'trades': list(db['pub_trades'].find(query).sort('date',-11).limit(500)),
+        'orderbook': list(db['pub_books'].find(query).sort('date',-1).limit(1))[0]
+    }))
 
 @main.route('/books/get', methods=['POST'])
 def get_books():

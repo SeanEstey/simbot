@@ -57,7 +57,7 @@ def update(ex, pair, section, bot_id, vol):
     """
     values = g.db['sim_books'].find_one({'ex':ex, 'pair':pair})[section]
     values[0][1] -= abs(vol)
-    log.debug('simbook.update, section=%s, vol=%s', section, values[0][1])
+    #log.debug('simbook.update, section=%s, vol=%s', section, values[0][1])
     g.db['sim_books'].update_one(
         {'ex':ex, 'pair':pair},
         {'$set':{section:values}}
