@@ -27,7 +27,7 @@ def update_bots(self, **rest):
     """Make buy/sell decisions. Called every 30 sec.
     """
     bot = SimBot('Terry')
-    bot.update()
+    #bot.update()
 
 #-------------------------------------------------------------------------------
 @celery.task(bind=True)

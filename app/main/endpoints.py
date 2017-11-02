@@ -16,7 +16,7 @@ def init_graph():
     db = current_app.db_client['simbot']
     query = {'ex':'QuadrigaCX', 'pair':('btc','cad')}
     smart_emit('updateGraphData', dumps({
-        'trades': list(db['pub_trades'].find(query).sort('date',-11).limit(500)),
+        'trades': list(db['pub_trades'].find(query).sort('date',-1).limit(500)),
         'orderbook': list(db['pub_books'].find(query).sort('date',-1).limit(1))[0]
     }))
 

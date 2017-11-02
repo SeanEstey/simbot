@@ -135,8 +135,8 @@ class SimBot():
 
                 if book_ind:
                     if book_ind['ask_inertia'] > 0 and book_ind['ask_inertia'] < 15:
-                        log.debug('ask_inertia=%s, book=%s, ex=%s. buying',
-                        book_ind['ask_inertia'], pair, conf['NAME'])
+                        log.debug('action=BUY, ask_inertia=%s, book=%s, ex=%s',
+                        round(book_ind['ask_inertia'],2), pair, conf['NAME'])
                         BUY = True
 
                 if BUY:
