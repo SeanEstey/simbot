@@ -18,6 +18,7 @@ Jinja2
 matplotlib
 numpy
 oauth2client
+pandas
 pymongo==3.3.0
 python-dateutil
 pyopenssl

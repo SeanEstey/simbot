@@ -28,24 +28,27 @@ def build_series(ex, pair, start, end):
     p_end += timedelta(minutes=10)
     n_mod = n_upsert = 0
 
+    # Calculate indicators for each 10 min period.
     while p_start <= end:
-        order_ind = from_orders(ex, pair, p_start, p_end)
-        trade_ind = from_trades(ex, pair, p_start, p_end)
+        book_ind = analyze_books(ex, pair, p_start, p_end)
+        trade_ind = analyze_trades(ex, pair, p_start, p_end)
+        orders_ind = analyze_orders(ex, pair, p_start, p_end)
 
         r = g.db['chart_series'].update_one(
             {'ex':ex,'pair':pair,'start':p_start,'end':p_end},
             {'$set':{
                 'avg.price': round(trade_ind.get('price',0.0),2),
-                'avg.bid_price':round(order_ind.get('bid_price',0.0),2),
-                'avg.bid_vol':round(order_ind['bid_vol'],5),
-                'avg.bid_inertia':round(order_ind.get('bid_inertia',0.0),5),
-                'avg.ask_price':round(order_ind.get('ask_price',0.0),2),
-                'avg.ask_vol':round(order_ind.get('ask_vol',0.0),5),
-                'avg.ask_inertia':round(order_ind.get('ask_inertia',0.0),5),
+                'avg.bid_price':round(book_ind.get('bid_price',0.0),2),
+                'avg.bid_vol':round(book_ind['bid_vol'],5),
+                'avg.bid_inertia':round(book_ind.get('bid_inertia',0.0),5),
+                'avg.ask_price':round(book_ind.get('ask_price',0.0),2),
+                'avg.ask_vol':round(book_ind.get('ask_vol',0.0),5),
+                'avg.ask_inertia':round(book_ind.get('ask_inertia',0.0),5),
                 'sum.buy_vol':trade_ind['buy_vol'],
                 'sum.sell_vol':trade_ind['sell_vol'],
                 'sum.n_buys':trade_ind['n_buys'],
-                'sum.n_sells':trade_ind['n_sells']
+                'sum.n_sells':trade_ind['n_sells'],
+                'orders':orders_ind
             }},
             True
         )
@@ -56,8 +59,10 @@ def build_series(ex, pair, start, end):
 
     log.debug('indicators modified=%s, created=%s', n_mod, n_upsert)
 
+
+
 #---------------------------------------------------------------
-def from_trades(ex, pair, start, end):
+def analyze_trades(ex, pair, start, end):
     ind = {
         'price':[],
         'buy_vol':0.0,
@@ -83,7 +88,43 @@ def from_trades(ex, pair, start, end):
     return ind
 
 #---------------------------------------------------------------
-def from_orders(ex, pair, start=None, end=None):
+def analyze_orders(ex, pair, start=None, end=None):
+
+    #if start is None and end is None:
+    #    docs = g.db['pub_actions'].find({'ex':ex, 'pair':pair}).sort('date',-1).limit(1)
+    #else:
+    docs = g.db['pub_actions'].find({'ex':ex, 'pair':pair, 'date':{'$gte':start, '$lt':end}})
+
+    ind = {
+        'n_bids_added':0,
+        'n_bids_removed':0,
+        'n_bids_executed':0,
+        'sum_bid_events':0,
+        'n_asks_added':0,
+        'n_asks_removed':0,
+        'n_asks_executed':0,
+        'sum_ask_events':0
+    }
+
+    for doc in docs:
+        if doc['action'] == 'added':
+            ind['n_%s_added' % doc['side']] += 1
+        elif doc['action'] == 'cancelled':
+            ind['n_%s_removed' % doc['side']] += 1
+        elif doc['action'] == 'trade':
+            ind['n_%s_executed' % doc['side']] += 1
+
+        if doc['side'] == 'bids':
+            ind['sum_bid_events'] += 1
+        else:
+            ind['sum_ask_events'] += 1
+
+    #log.debug('order indicators=%s', ind)
+
+    return ind
+
+#---------------------------------------------------------------
+def analyze_books(ex, pair, start=None, end=None):
     ind = {
         'bid_price':[],
         'bid_vol':[],

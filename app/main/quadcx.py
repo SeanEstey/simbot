@@ -18,11 +18,11 @@ def update_ticker(pair):
     t1 = Timer()
     try:
         r = requests.get(conf['TICKER_URL'] % conf['PAIRS'][pair]['book'])
+        data = json.loads(r.text)
     except Exception as e:
-        log.exception('Failed to get Quadriga ticker book: %s', str(e))
+        log.exception('Quadriga ticker error: %s', str(e))
         raise
 
-    data = json.loads(r.text)
     for k in data:
         data[k] = float(data[k])
     data.update({'ex':'QuadrigaCX','pair':pair,'date':datetime.utcnow()})

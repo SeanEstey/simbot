@@ -8,9 +8,6 @@
 python-openssl
 python-pip
 python2.7-dev
-php7.0-curl
-php7.0-dev
-php7.0-mbstring
 rabbitmq-server
 nginx
 logrotate

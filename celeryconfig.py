@@ -11,11 +11,11 @@ worker_concurrency = 1
 beat_schedule = {
     'update_ex_data': {
         'task':'app.main.tasks.update_ex_data',
-        'schedule': 30.0
+        'schedule': 15.0
     },
     'update_bots': {
         'task':'app.main.tasks.update_bots',
-        'schedule': 30.0
+        'schedule': 15.0
     },
     'update_client_indicators': {
         'task':'app.main.tasks.update_client_indicators',

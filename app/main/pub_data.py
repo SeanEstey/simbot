@@ -1,7 +1,10 @@
 # pub_data.py
 import logging
 from time import sleep
+from pprint import pprint
 from datetime import datetime
+from pymongo import InsertOne
+from pymongo.errors import BulkWriteError
 from app import celery
 from flask import g
 from pymongo import ReturnDocument
@@ -41,10 +44,17 @@ def save_trades():
             n_new = n_total = 0
             book = conf['PAIRS'][pair]['book']
 
-            for trade in client.get_public_trades(time='minute', book=book):
+            trades = client.get_public_trades(time='minute', book=book)
+
+            if len(trades) == 0:
+                continue
+
+            trades.reverse()
+
+            for trade in trades:
                 _doc = {
                     'ex':conf['NAME'],
-                    'date':datetime.fromtimestamp(int(trade['date'])+(3600*6)),
+                    'date':datetime.utcfromtimestamp(int(trade['date'])),
                     'tid':trade['tid'],
                     'pair':pair,
                     'side':trade['side'],
@@ -63,7 +73,7 @@ def save_trades():
                     smart_emit('updateGraphData', dumps({'trades':[_doc]}))
                     n_new+=1
 
-            log.debug('%s/%s new trades, ex=%s, book=%s', n_new, n_total, 'QuadrigaCX', book)
+            #log.debug('%s/%s new trades, ex=%s, book=%s', n_new, n_total, 'QuadrigaCX', book)
 
 #---------------------------------------------------------------
 def save_orderbook():
@@ -76,7 +86,7 @@ def save_orderbook():
 
         for pair in conf['PAIRS']:
             orders = client.get_public_orders(book=conf['PAIRS'][pair]['book'])
-            dt = datetime.fromtimestamp(int(orders['timestamp'])+(3600*6))
+            dt = datetime.utcfromtimestamp(int(orders['timestamp']))
 
             for bids in orders['bids']:
                 bids[0] = float(bids[0])
@@ -105,12 +115,21 @@ def save_orderbook():
 
 #---------------------------------------------------------------
 def book_diff(ex, pair, ordersv1, dt1, ordersv2, dt2, side):
-    from pymongo import InsertOne
-    from pymongo.errors import BulkWriteError
+    """Given two separate orderbooks, each saved from a different moment in time,
+    reconstruct the set or order actions between snapshots.(ADD, CANCEL, TRADE)
+    """
 
     _ordersv1= {}
     requests = []
-    n_trades = 0
+
+    # Test if n_trades matches number of already recorded trades with this
+    # ex/pair in timespan between both orderbook snapshots
+    qside = 'buy' if side == 'asks' else 'sell'
+    trades = g.db['pub_trades'].find(
+        {'ex':ex, 'pair':pair, 'date':{'$gte':dt1, '$lt':dt2}, 'side':qside}
+    ).sort('date',1)
+    trades = list(trades)
+    n_trades_saved = 0
 
     # Build dict {'price':'volume'} from ordersv1
     for order in ordersv1:
@@ -118,32 +137,81 @@ def book_diff(ex, pair, ordersv1, dt1, ordersv2, dt2, side):
 
     # Now loop through ordersv2 bids/asks and lookup price key
     for order in ordersv2:
-        prev = _ordersv1.get(order[0],None)
+        # book_v1 order volume at given price
+        v1_order_vol = _ordersv1.get(order[0],None)
+        v2_order_vol = order[1]
 
         # No change
-        if prev and prev == order[1]:
+        if v1_order_vol and v1_order_vol == v2_order_vol:
             del _ordersv1[order[0]]
             continue
         # Volume change
-        elif prev and prev != order[1]:
-            requests.append(InsertOne({
-                'ex':ex,
-                'pair':pair,
-                'side':side,
-                'date':datetime.utcnow(),
-                'action':'adjusted',
-                'price':order[0],
-                'volume':round((order[1] - prev),8),
-                'remaining':round(order[1],8)
-            }))
-            n_trades += 1
+        elif v1_order_vol and v1_order_vol != v2_order_vol:
+            vol_remain = round(v1_order_vol,8)
+            vol_filled = 0
+            bMatch=False
+            for trade in trades:
+                if trade['price'] == order[0]:
+                    vol_remain -= trade['volume']
+                    vol_filled += trade['volume']
+                    requests.append(InsertOne({
+                        'ex':ex,
+                        'pair':pair,
+                        'side':side,
+                        'date':trade['date'],
+                        'action':'trade',
+                        'price':trade['price'],
+                        'tid':trade['tid'],
+                        'volume':trade['volume']*-1,
+                        'remaining':round(vol_remain,8)
+                    }))
+                    n_trades_saved += 1
+                    bMatch=True
 
-            # TODO: See if the vol adjustment matches any
-            # recorded trades in this timespan
+            if bMatch:
+                # If entire order was filled by trades but positive volume
+                # remains, final action must have been creation of new order
+                # at same price.
+                if vol_filled >= v1_order_vol and v2_order_vol > 0:
+                    # Some volume was added to this order
+                    requests.append(InsertOne({
+                        'ex':ex,
+                        'pair':pair,
+                        'side':side,
+                        'date':datetime.utcnow(),
+                        'action':'added',
+                        'price':order[0],
+                        'volume':round(v2_order_vol,8)
+                    }))
+            # No trades found to explain vol diff across snapshots
+            # Order must have been removed and remade at same vol and diff
+            # price
+            else:
+                #log.debug('unknown order action(s), side=%s, p=%s, v1_vol=%s, v2_vol=%s',
+                #    side, order[0], v1_order_vol, v2_order_vol)
+
+                requests.append(InsertOne({
+                    'ex':ex,
+                    'pair':pair,
+                    'side':side,
+                    'date':datetime.utcnow(),
+                    'action':'cancelled',
+                    'price':order[0],
+                    'volume':round(v1_order_vol,8)
+                }))
+                requests.append(InsertOne({
+                    'ex':ex,
+                    'pair':pair,
+                    'side':side,
+                    'date':datetime.utcnow(),
+                    'action':'added',
+                    'price':order[0],
+                    'volume':round(v2_order_vol,8)
+                }))
 
             del _ordersv1[order[0]]
         # New order
-        elif prev is None:
+        elif v1_order_vol is None:
             requests.append(InsertOne({
                 'ex':ex,
                 'pair':pair,
@@ -154,28 +222,45 @@ def book_diff(ex, pair, ordersv1, dt1, ordersv2, dt2, side):
                 'volume':round(order[1],8)
             }))
 
-    # Any remaining orders in _ordersv1 were removed by maker
+    # Any orders in book snapshot #1 but not #2 were either completed
+    # trades or cancelled by maker
     for k in _ordersv1:
-        requests.append(InsertOne({
-            'ex':ex,
-            'pair':pair,
-            'side':side,
-            'date':datetime.utcnow(),
-            'action':'cancelled',
-            'price':k,
-            'volume':round(_ordersv1[k],8)
-        }))
+        vol_executed = 0.0
+        bMatch=False
+        for trade in trades:
+            if trade['price'] == k:
+                requests.append(InsertOne({
+                    'ex':ex,
+                    'pair':pair,
+                    'side':side,
+                    'date':trade['date'],
+                    'action':'trade',
+                    'price':trade['price'],
+                    'tid':trade['tid'],
+                    'volume':trade['volume']*-1,
+                    'remaining':round(vol_executed,8)
+                }))
+                n_trades_saved += 1
+                bMatch = True
+                vol_executed += trade['volume']
 
-    # Test if n_trades matches number of already recorded trades with this
-    # ex/pair in timespan between both orderbook snapshots
-    qside = 'buy' if side == 'asks' else 'sell'
+        if not bMatch:
+            requests.append(InsertOne({
+                'ex':ex,
+                'pair':pair,
+                'side':side,
+                'date':datetime.utcnow(),
+                'action':'cancelled',
+                'price':k,
+                'volume':round(_ordersv1[k],8)
+            }))
 
-    trades = g.db['pub_trades'].find(
-        {'ex':ex, 'pair':pair, 'date':{'$gte':dt1, '$lt':dt2}, 'side':qside}
-    )
-
-    print('book_diff(): pair=%s, side=%s, n_orderbook_changes=%s, n_trades=%s, n_actual_trades=%s'%(
-        pair, side, len(requests), n_trades, trades.count()))
+    # TODO: Check if any of the trades within the 2 snapshots happened so
+    # quickly (order added + consumed) that they weren't captured in either of the orderbook snapshots
+    if len(requests) > 0 and pair[0] == 'btc':
+        log.debug('ob diff: pair=%s, side=%s, n_diffs=%s, n_trades=%s (%s)',
+            pair, side, len(requests), n_trades_saved, len(trades))
+        pprint(requests)
 
     if len(requests) > 0:
         g.db['pub_actions'].bulk_write(requests)
