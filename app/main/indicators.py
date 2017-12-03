@@ -41,19 +41,18 @@ def build_series(ex, pair, start, end):
             {'ex':ex,'pair':pair,'start':p_start,'end':p_end},
             {'$set':{
                 'avg.bid_price': book_ind.get('bid_price',0.0),
+                'avg.ask_price': book_ind.get('ask_price',0.0),
                 'avg.bid_vol': book_ind['bid_vol'],
+                'avg.ask_vol': book_ind.get('ask_vol',0.0),
                 'avg.bid_inertia':book_ind.get('bid_inertia'),
                 'avg.ask_inertia':book_ind.get('ask_inertia'),
-                'avg.ask_price': book_ind.get('ask_price',0.0),
-                'avg.ask_vol': book_ind.get('ask_vol',0.0),
                 'avg.price': trade_ind['price'],
                 'sum.n_buys':trade_ind['n_buys'],
                 'sum.n_sells':trade_ind['n_sells'],
                 'sum.buy_vol':trade_ind['buy_vol'],
                 'sum.sell_vol':trade_ind['sell_vol'],
-                'sum.net_vol':trade_ind['buy_vol'] - trade_ind['sell_vol'],
-                'ob_action_indicators':analyze_ob_actions(ex, pair, p_start, p_end),
-                'trade_indicators':trade_ind
+                'actions':analyze_ob_actions(ex, pair, p_start, p_end),
+                'trades':trade_ind
             }},
             True
         )
@@ -66,6 +65,27 @@ def build_series(ex, pair, start, end):
 
 #---------------------------------------------------------------
 def analyze_trades(ex, pair, start, end):
+
+    """
+    # DATAFRAME CODE
+    df = json_normalize(list(g.db['pub_trades'].find({
+        'ex':ex, 'pair':pair, 'date':{'$gte':start, '$lte':end}
+    })))
+    df_buy = df.loc[ df['side'] == 'buy' ]
+    df_sell = df.loc[ df['side'] == 'sell' ]
+
+    return {
+        'n_buys': df_buy.count()['_id'],
+        'buy_vol': df_buy['volume'].sum(),
+        'n_sells': df_sell.count()['_id'],
+        'sell_vol': df_sell['volume'].sum(),
+        'price': df['price'].mean(),
+        'price_diff': df.loc[-1]['price'] - df.loc[0]['price'],
+        'buy_rate': results['n_buys'] / df.count()['_id'],
+        'vol_diff': results['buy_vol'] - results['sell_vol']
+    }
+    """
+
     ind = {
         'price':[],
         'buy_vol':0.0,
@@ -79,21 +99,47 @@ def analyze_trades(ex, pair, start, end):
     })
     for t in trades:
         ind['price'].append(t['price'])
+
         if t.get('side','') == 'buy':
             ind['buy_vol'] += t['volume']
             ind['n_buys'] += 1
-        elif t.get('side''') == 'sell':
+        elif t.get('side','') == 'sell':
             ind['sell_vol'] += t['volume']
             ind['n_sells'] += 1
 
-    ind['price'] = round(sum(ind['price'])/len(ind['price']),2) if len(ind['price']) > 0 else 0.0
-    ind['buy_rate'] = ind['n_buys']/(ind['n_buys']+ind['n_sells']) if ind['n_buys']+ind['n_sells'] > 0 else 0.0
-    #log.debug(ind)
-    return ind
+    return {
+        'n_buys': ind['n_buys'],
+        'n_sells': ind['n_sells'],
+        'buy_vol': ind['buy_vol'],
+        'sell_vol': ind['sell_vol'],
+        # Avg price
+        'price': round(sum(ind['price'])/len(ind['price']),2) if len(ind['price']) > 0 else 0.0,
+        # Percent price change
+        'price_diff': round(((ind['price'][-1] - ind['price'][0]) / ind['price'][0]) * 100, 2),
+        # Num Buys/Total Trades ratio
+        'buy_rate': round(ind['n_buys']/(ind['n_buys']+ind['n_sells']),2) if ind['n_buys']+ind['n_sells'] > 0 else 0.0,
+        'vol_diff': ind['buy_vol'] - ind['sell_vol']
+    }
 
 #---------------------------------------------------------------
 def analyze_ob(ex, pair, start=None, end=None):
     """Find indicators from examining structure of orderbooks.
+    """
+
+    """
+    # DATAFRAME CODE
+    df = json_normalize(list(g.db['pub_books'].find({
+        'ex':ex, 'pair':pair, 'date':{'$gte':start, '$lte':end}
+    })))
+
+    return {
+        'ask_price': df['asks'][0].mean(),
+        'bid_price': df['bids'][0].mean(),
+        'ask_vol': df['asks'][1].sum(),
+        'bid_vol': df['bids'][1].sum(),
+        'bid_inertia': ???
+        'ask_inertia': ???
+    }
     """
 
     if start is None and end is None:
@@ -123,8 +169,8 @@ def analyze_ob(ex, pair, start=None, end=None):
         ask_prices.append(float(asks[0][0]))
 
         # Bid/Ask volume sums
-        ask_vols.append(numpy.mean([float(n[1]) for n in asks]))
-        bid_vols.append(numpy.mean([float(n[1]) for n in bids]))
+        ask_vols.append( sum([float(n[1]) for n in asks]) )
+        bid_vols.append( sum([float(n[1]) for n in bids]) )
 
         # Bid/Ask inertia: amount of order book volume needing to be executed
         # to move bid/ask price >= 1%. Lower values may predict sudden price swings.
@@ -150,7 +196,9 @@ def analyze_ob(ex, pair, start=None, end=None):
         'ask_inertia': round(sum(ask_inertias)/len(ask_inertias), 2) if len(ask_inertias) > 0 else 0.0
     }
 
-    #log.debug(results)
+    # Avg bid volume - Avg ask volume
+    results['vol_diff'] = results['bid_vol'] - results['ask_vol']
+
     return results
 
 #---------------------------------------------------------------
@@ -180,5 +228,4 @@ def analyze_ob_actions(ex, pair, start=None, end=None):
         'sum_ask_events': int(df2.count()['_id'])
     })
 
-    #log.debug(results)
     return results

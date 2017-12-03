@@ -74,11 +74,11 @@ def _test_indicators():
     from datetime import datetime, timedelta
     from app.main.indicators import build_series
 
-    utcnow = datetime.now()+timedelta(hours=6)
+    utcnow = datetime.utcnow()#+timedelta(hours=6)
     build_series(
         'QuadrigaCX',
         ('btc','cad'),
-        utcnow - timedelta(days=0, hours=1),
+        utcnow - timedelta(days=0, hours=4),
         utcnow)
     return 'OK'
 
