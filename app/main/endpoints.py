@@ -69,6 +69,12 @@ def _update_books():
         coinsquare.update('CAD', 'BTC')
     return 'OK'
 
+@main.route('/test/backup', methods=['GET'])
+def _test_backup():
+    from app.main.tasks import backup_mongo
+    backup_mongo.delay()
+    return 'ok'
+
 @main.route('/test/indicators', methods=['GET'])
 def _test_indicators():
     from datetime import datetime, timedelta
