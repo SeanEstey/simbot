@@ -68,3 +68,19 @@ def _update_books():
     if get('exchange') == 'Coinsquare':
         coinsquare.update('CAD', 'BTC')
     return 'OK'
+
+@main.route('/test/indicators', methods=['GET'])
+def _test_indicators():
+    from datetime import datetime, timedelta
+    from app.main.indicators import build_series
+
+    utcnow = datetime.now()+timedelta(hours=6)
+    build_series(
+        'QuadrigaCX',
+        ('btc','cad'),
+        utcnow - timedelta(days=0, hours=1),
+        utcnow)
+    return 'OK'
+
+
+

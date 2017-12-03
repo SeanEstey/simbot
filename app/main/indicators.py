@@ -1,6 +1,10 @@
 # indicators.py
 from datetime import datetime, time, timedelta
 from dateutil.parser import parse
+import numpy
+import pandas as pd
+from pandas import DataFrame
+from pandas.io.json import json_normalize
 from flask import g
 from logging import getLogger
 log = getLogger(__name__)
@@ -9,7 +13,7 @@ log = getLogger(__name__)
 def update_time_series(ndays=None, nhours=None):
     """Time series is for client chart data.
     """
-    utcnow = datetime.now()+timedelta(hours=6)
+    utcnow = datetime.utcnow() #+timedelta(hours=6)
     build_series(
         'QuadrigaCX',
         ('btc','cad'),
@@ -30,25 +34,26 @@ def build_series(ex, pair, start, end):
 
     # Calculate indicators for each 10 min period.
     while p_start <= end:
-        book_ind = analyze_books(ex, pair, p_start, p_end)
+        book_ind = analyze_ob(ex, pair, p_start, p_end)
         trade_ind = analyze_trades(ex, pair, p_start, p_end)
-        orders_ind = analyze_orders(ex, pair, p_start, p_end)
 
         r = g.db['chart_series'].update_one(
             {'ex':ex,'pair':pair,'start':p_start,'end':p_end},
             {'$set':{
-                'avg.price': round(trade_ind.get('price',0.0),2),
-                'avg.bid_price':round(book_ind.get('bid_price',0.0),2),
-                'avg.bid_vol':round(book_ind['bid_vol'],5),
-                'avg.bid_inertia':round(book_ind.get('bid_inertia',0.0),5),
-                'avg.ask_price':round(book_ind.get('ask_price',0.0),2),
-                'avg.ask_vol':round(book_ind.get('ask_vol',0.0),5),
-                'avg.ask_inertia':round(book_ind.get('ask_inertia',0.0),5),
-                'sum.buy_vol':trade_ind['buy_vol'],
-                'sum.sell_vol':trade_ind['sell_vol'],
+                'avg.bid_price': book_ind.get('bid_price',0.0),
+                'avg.bid_vol': book_ind['bid_vol'],
+                'avg.bid_inertia':book_ind.get('bid_inertia'),
+                'avg.ask_inertia':book_ind.get('ask_inertia'),
+                'avg.ask_price': book_ind.get('ask_price',0.0),
+                'avg.ask_vol': book_ind.get('ask_vol',0.0),
+                'avg.price': trade_ind['price'],
                 'sum.n_buys':trade_ind['n_buys'],
                 'sum.n_sells':trade_ind['n_sells'],
-                'orders':orders_ind
+                'sum.buy_vol':trade_ind['buy_vol'],
+                'sum.sell_vol':trade_ind['sell_vol'],
+                'sum.net_vol':trade_ind['buy_vol'] - trade_ind['sell_vol'],
+                'ob_action_indicators':analyze_ob_actions(ex, pair, p_start, p_end),
+                'trade_indicators':trade_ind
             }},
             True
         )
@@ -58,8 +63,6 @@ def build_series(ex, pair, start, end):
         n_upsert += 1 if r.upserted_id else 0
 
     log.debug('indicators modified=%s, created=%s', n_mod, n_upsert)
-
-
 
 #---------------------------------------------------------------
 def analyze_trades(ex, pair, start, end):
@@ -83,56 +86,15 @@ def analyze_trades(ex, pair, start, end):
             ind['sell_vol'] += t['volume']
             ind['n_sells'] += 1
 
-    ind['price'] = sum(ind['price'])/len(ind['price']) if len(ind['price']) > 0 else 0.0
+    ind['price'] = round(sum(ind['price'])/len(ind['price']),2) if len(ind['price']) > 0 else 0.0
     ind['buy_rate'] = ind['n_buys']/(ind['n_buys']+ind['n_sells']) if ind['n_buys']+ind['n_sells'] > 0 else 0.0
+    #log.debug(ind)
     return ind
 
 #---------------------------------------------------------------
-def analyze_orders(ex, pair, start=None, end=None):
-
-    #if start is None and end is None:
-    #    docs = g.db['pub_actions'].find({'ex':ex, 'pair':pair}).sort('date',-1).limit(1)
-    #else:
-    docs = g.db['pub_actions'].find({'ex':ex, 'pair':pair, 'date':{'$gte':start, '$lt':end}})
-
-    ind = {
-        'n_bids_added':0,
-        'n_bids_removed':0,
-        'n_bids_executed':0,
-        'sum_bid_events':0,
-        'n_asks_added':0,
-        'n_asks_removed':0,
-        'n_asks_executed':0,
-        'sum_ask_events':0
-    }
-
-    for doc in docs:
-        if doc['action'] == 'added':
-            ind['n_%s_added' % doc['side']] += 1
-        elif doc['action'] == 'cancelled':
-            ind['n_%s_removed' % doc['side']] += 1
-        elif doc['action'] == 'trade':
-            ind['n_%s_executed' % doc['side']] += 1
-
-        if doc['side'] == 'bids':
-            ind['sum_bid_events'] += 1
-        else:
-            ind['sum_ask_events'] += 1
-
-    #log.debug('order indicators=%s', ind)
-
-    return ind
-
-#---------------------------------------------------------------
-def analyze_books(ex, pair, start=None, end=None):
-    ind = {
-        'bid_price':[],
-        'bid_vol':[],
-        'bid_inertia':[],
-        'ask_price':[],
-        'ask_vol':[],
-        'ask_inertia':[]
-    }
+def analyze_ob(ex, pair, start=None, end=None):
+    """Find indicators from examining structure of orderbooks.
+    """
 
     if start is None and end is None:
         docs = g.db['pub_books'].find({'ex':ex, 'pair':pair}).sort('date',-1).limit(1)
@@ -144,60 +106,79 @@ def analyze_books(ex, pair, start=None, end=None):
             ind[k] = 0.0
         return ind
 
+    # For each snapshot in series, find av determine indicators
+    ask_prices = []
+    bid_prices = []
+    ask_vols = []
+    bid_vols = []
+    ask_inertias = []
+    bid_inertias = []
+
     for doc in docs:
-        #log.debug('averaging n=%s order_books', docs.count())
         asks = doc['asks']
         bids = doc['bids']
-        v_ask = v_bid = 0.0
-        ask_delta = [float(asks[0][0]) * 1.01, None]
-        bid_delta = [float(bids[0][0]) * 0.99, None]
 
+        # Price
+        bid_prices.append(float(bids[0][0]))
+        ask_prices.append(float(asks[0][0]))
+
+        # Bid/Ask volume sums
+        ask_vols.append(numpy.mean([float(n[1]) for n in asks]))
+        bid_vols.append(numpy.mean([float(n[1]) for n in bids]))
+
+        # Bid/Ask inertia: amount of order book volume needing to be executed
+        # to move bid/ask price >= 1%. Lower values may predict sudden price swings.
+        inertia = 0.0
         for b in bids:
-            v_bid += float(b[1])
-            if bid_delta[1] is None and float(b[0]) <= bid_delta[0]:
-                bid_delta[1] = v_bid
+            inertia += float(b[1])
+            if float(b[0]) <= float(bids[0][0]) * 0.99:
+                break
+        bid_inertias.append(inertia)
         for a in asks:
-            v_ask += float(a[1])
-            if ask_delta[1] is None and float(a[0]) >= ask_delta[0]:
-                ask_delta[1] = v_ask
+            inertia += float(a[1])
+            if float(a[0]) >= float(asks[0][0]) * 1.01:
+                break
+        ask_inertias.append(inertia)
 
-        ind['bid_price'].append(float(bids[0][0]))
-        ind['bid_vol'].append(v_bid)
-        ind['bid_inertia'].append(bid_delta[1])
-        ind['ask_price'].append(float(asks[0][0]))
-        ind['ask_vol'].append(v_ask)
-        ind['ask_inertia'].append(ask_delta[1])
-
-    ind['bid_price'] = sum(ind['bid_price'])/len(ind['bid_price']) if len(ind['bid_price']) > 0 else 0.0
-    ind['bid_vol'] = sum(ind['bid_vol'])/len(ind['bid_vol']) if len(ind['bid_vol']) > 0 else 0.0
-    ind['bid_inertia'] = sum(ind['bid_inertia'])/len(ind['bid_inertia']) if len(ind['bid_inertia']) > 0 else 0.0
-    ind['ask_price'] = sum(ind['ask_price'])/len(ind['ask_price']) if len(ind['ask_price']) > 0 else 0.0
-    ind['ask_vol'] = sum(ind['ask_vol'])/len(ind['ask_vol']) if len(ind['ask_vol']) > 0 else 0.0
-    ind['ask_inertia'] = sum(ind['ask_inertia'])/len(ind['ask_inertia']) if len(ind['ask_inertia']) > 0 else 0.0
-    return ind
-
-
-
-
-
-"""agg = g.db['pub_books'].aggregate([
-    {'$match':{'ex':ex, 'book':book, 'date':{'$gte':first,'$lt':p_end}}},
-    {'$unwind':'$asks'},
-    {'$group':{
-        '_id':'$_id',
-        'ask0':{'$first':{'$arrayElemAt':['$asks',0]}},
-        'bid0':{'$first':{'$arrayElemAt':['$bids',0]}}
-    }},
-    {'$group':{
-        '_id':'',
-        'avg_ask':{'$avg':'$ask0'}, 'avg_bid':{'$avg':'$bid0'}}
+    # Take average of all indicators.
+    results = {
+        'bid_price': round(sum(bid_prices)/len(bid_prices),2) if len(bid_prices) > 0 else 0.0,
+        'ask_price': round(sum(ask_prices)/len(ask_prices),2) if len(ask_prices) > 0 else 0.0,
+        'bid_vol': round(sum(bid_vols)/len(bid_vols),5) if len(bid_vols) > 0 else 0.0,
+        'ask_vol': round(sum(ask_vols)/len(ask_vols),5) if len(ask_vols) > 0 else 0.0,
+        'bid_inertia': round(sum(bid_inertias)/len(bid_inertias), 2) if len(bid_inertias) > 0 else 0.0,
+        'ask_inertia': round(sum(ask_inertias)/len(ask_inertias), 2) if len(ask_inertias) > 0 else 0.0
     }
-])
-aggr = g.db['pub_trades'].aggregate([
-    {'$match': {
-        'exchange':ex,
-        'currency':book[0:3],
+
+    #log.debug(results)
+    return results
+
+#---------------------------------------------------------------
+def analyze_ob_actions(ex, pair, start=None, end=None):
+    """Analyze the maker orderbook actions already parsed out
+    in main.pub_data.book_diff().
+    """
+    df = json_normalize(list(g.db['pub_actions'].find({
+        'ex':ex,
+        'pair':pair,
         'date':{'$gte':start, '$lte':end}
-    }},
-    {'$group':{'_id':'$side', 'count':{'$sum':1}, 'volume':{'$sum':'volume'}}}
-])"""
+    })))
+
+    df1 = df.loc[ (df['side'] == 'bids') ]
+    results = {
+        'n_bids_added':  int(df1.loc[ df1['action'] == 'added' ].count()['_id']),
+        'n_bids_removed': int(df1.loc[ df1['action'] == 'cancelled' ].count()['_id']),
+        'n_bids_executed': int(df1.loc[ df1['action'] == 'trade' ].count()['_id']),
+        'sum_bid_events': int(df1.count()['_id'])
+    }
+
+    df2 = df.loc[ (df['side'] == 'asks') ]
+    results.update({
+        'n_asks_added':  int(df2.loc[ df2['action'] == 'added' ].count()['_id']),
+        'n_asks_removed': int(df2.loc[ df2['action'] == 'cancelled'].count()['_id']),
+        'n_asks_executed': int(df2.loc[ df2['action'] == 'trade' ].count()['_id']),
+        'sum_ask_events': int(df2.count()['_id'])
+    })
+
+    #log.debug(results)
+    return results
