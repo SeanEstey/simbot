@@ -6,6 +6,7 @@ DEBUG = False
 LOG_PATH = '/root/simbot/logs/'
 MONGO_URL = 'localhost'
 MONGO_PORT = 27017
+MONGO_DUMP_DIR = '~/Dropbox/mongo/simbot'
 LOCAL_PORT = 8000
 LOCAL_URL = 'http://localhost:%s' % LOCAL_PORT
 PUB_PORT = 80

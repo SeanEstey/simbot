@@ -34,3 +34,15 @@ def authenticate(client, user=None, pw=None):
         raise
 
     #print 'MongoClient authenticated'
+
+#-------------------------------------------------------------------------------
+def dump(path):
+    import os
+    os.system("mongodump -o %s" % path)
+    #log.info("MongoDB backup created")
+
+#-------------------------------------------------------------------------------
+def restore(path):
+    import os
+    os.system("mongorestore -d simbot %s" % path)
+

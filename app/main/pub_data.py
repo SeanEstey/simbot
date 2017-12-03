@@ -110,8 +110,33 @@ def save_orderbook():
                 'asks':orders['asks']
             }
 
+            # Capped collection, no need to manage the size
             g.db['pub_books'].insert_one(document)
+
             smart_emit('updateGraphData', dumps({'orderbook':document}))
+
+#---------------------------------------------------------------
+def book_diff_df(ex, pair, ordersv1, dt1, ordersv2, dt2, side):
+    """Same as below but using pandas dataframes.
+    https://stackoverflow.com/questions/28901683/pandas-get-rows-which-are-not-in-other-dataframe
+    https://pandas.pydata.org/pandas-docs/stable/merging.html
+
+    Algorithm:
+
+    1. Build each orders list into pandas dataframe as: [price, date, volume]
+    2. Add into frames list:
+        frames=[df1, df2]
+    3. Concat frames:
+        pd.concat(frames)
+    4. Filter out rows where volumes match
+    5. We're left with just the differences
+    6. For rows with different volumes, iterate through trades with matching
+    timeframe/price, catalog them
+    7. For rows with volume in Col1 but not Col2, mark as cancelled order
+    8. For rows with volume in Col2 but not Col1, mark as added order
+    """
+    pass
+
 
 #---------------------------------------------------------------
 def book_diff(ex, pair, ordersv1, dt1, ordersv2, dt2, side):

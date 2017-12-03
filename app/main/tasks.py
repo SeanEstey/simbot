@@ -13,8 +13,9 @@ log = logging.getLogger(__name__)
 #-------------------------------------------------------------------------------
 @celery.task(bind=True)
 def backup_mongo(self, **rest):
+    from config import MONGO_DUMP_DIR
     import os
-    os.system("mongodump /data/backup")
+    os.system("mongodump -o %s" % MONGO_DUMP_DIR)
     log.info("MongoDB backup created")
 
 #-------------------------------------------------------------------------------

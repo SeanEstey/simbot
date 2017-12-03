@@ -37,6 +37,17 @@ def build_series(ex, pair, start, end):
         book_ind = analyze_ob(ex, pair, p_start, p_end)
         trade_ind = analyze_trades(ex, pair, p_start, p_end)
 
+        """
+        # TODO: create another collection for statistical data. Use
+        # chart_series only for limited set of visualization data,
+        # so that all this isn't passed to client each time for drawing
+        # charts.
+        g.db['data_stats'].update_one(
+            {'ex':ex,'pair':pair,'start':p_start,'end':p_end},
+            {'$set':{}}
+        )
+        """
+
         r = g.db['chart_series'].update_one(
             {'ex':ex,'pair':pair,'start':p_start,'end':p_end},
             {'$set':{
