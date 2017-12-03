@@ -12,6 +12,13 @@ log = logging.getLogger(__name__)
 
 #-------------------------------------------------------------------------------
 @celery.task(bind=True)
+def backup_mongo(self, **rest):
+    import os
+    os.system("mongodump /data/backup")
+    log.info("MongoDB backup created")
+
+#-------------------------------------------------------------------------------
+@celery.task(bind=True)
 def update_ex_data(self, **rest):
     """Save public trade/orderbook data, update simulation orderbooks. Called
     every 10 sec.

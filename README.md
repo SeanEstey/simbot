@@ -51,3 +51,16 @@ If running in background, get pid:
 Now kill it using that PID:
 `$kill -9 <PID>`
 (May need to run twice)
+
+## Flask Shell
+
+
+$ export FLASK_APP=/root/simbot/run.py
+$ flask shell
+
+>>> from flask import g, current_app
+>>> ctx = app.test_request_context()
+>>> ctx.push()
+>>> app.preprocess_request()
+>>> remote_client = create_client(host="http://45.79.176.125/", port=27017)
+>>> g.db = current_app.db_client['simbot']

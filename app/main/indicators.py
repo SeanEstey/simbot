@@ -203,7 +203,7 @@ def analyze_ob(ex, pair, start=None, end=None):
 
 #---------------------------------------------------------------
 def analyze_ob_actions(ex, pair, start=None, end=None):
-    """Analyze the maker orderbook actions already parsed out
+    """Analyze the maker orderbook actions--create, cancel, execute--already parsed out
     in main.pub_data.book_diff().
     """
     df = json_normalize(list(g.db['pub_actions'].find({

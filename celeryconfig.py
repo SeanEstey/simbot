@@ -21,5 +21,9 @@ beat_schedule = {
         'task':'app.main.tasks.update_client_indicators',
         'schedule': 600.0
     }
+    'backup_mongo': {
+        'task': 'app.main.tasks.backup_mongo',
+        'schedule': crontab(hour=1, minute=0, day_of_week='*')
+    }
 }
 
