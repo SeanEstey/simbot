@@ -17,7 +17,7 @@ def update_time_series(ndays=None, nhours=None):
         'QuadrigaCX',
         ('btc','cad'),
         datetime.utcnow() - timedelta(minutes=10),
-        end = datetime.utcnow()
+        datetime.utcnow()
     )
 
 #---------------------------------------------------------------
