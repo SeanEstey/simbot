@@ -158,11 +158,6 @@ def analyze_ob(ex, pair, start=None, end=None):
     else:
         docs = g.db['pub_books'].find({'ex':ex, 'pair':pair, 'date':{'$gte':start, '$lt':end}})
 
-    if docs.count() < 1:
-        for k in ind:
-            ind[k] = 0.0
-        return ind
-
     # For each snapshot in series, find av determine indicators
     ask_prices = []
     bid_prices = []
