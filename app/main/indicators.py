@@ -13,6 +13,9 @@ log = getLogger(__name__)
 def update_time_series(ndays=None, nhours=None):
     """Time series is for client chart data.
     """
+
+    # TODO: pass the ndays/nhours args to build_series
+    # if present, otherwise default is just minutes=10
     build_series(
         'QuadrigaCX',
         ('btc','cad'),
