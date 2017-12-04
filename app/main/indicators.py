@@ -39,6 +39,8 @@ def build_series(ex, pair, start, end):
 
     while p_start <= end:
         query = {'ex':ex,'pair':pair,'start':p_start,'end':p_end}
+        log.debug('series, start=%s, end=%s, p_start=%s, p_end=%s',
+            start, end, p_start, p_end)
 
         ob_ind = analyze_ob(ex, pair, p_start, p_end)
         ob_act_ind =  analyze_ob_actions(ex, pair, p_start, p_end)
@@ -52,11 +54,11 @@ def build_series(ex, pair, start, end):
                 'avg.ask_vol': ob_ind.get('sum_ask_vol',0.0),
                 'avg.bid_inertia':ob_ind.get('mean_bid_inertia'),
                 'avg.ask_inertia':ob_ind.get('mean_ask_inertia'),
-                'avg.price': trade_ind['price'],
-                'sum.n_buys':trade_ind['n_buys'],
-                'sum.n_sells':trade_ind['n_sells'],
-                'sum.buy_vol':trade_ind['buy_vol'],
-                'sum.sell_vol':trade_ind['sell_vol'],
+                'avg.price': trade_ind.get('price',None),
+                'sum.n_buys':trade_ind.get('n_buys',None),
+                'sum.n_sells':trade_ind.get('n_sells',None),
+                'sum.buy_vol':trade_ind.get('buy_vol',None),
+                'sum.sell_vol':trade_ind.get('sell_vol',None),
                 'orderbook': ob_ind
             }},
             True)
@@ -64,7 +66,7 @@ def build_series(ex, pair, start, end):
         g.db['indicators'].update_one(query,
             {'$set': {
                 'orderbook': ob_ind,
-                'ob_actoins': ob_act_ind,
+                'ob_actions': ob_act_ind,
                 'trades':trade_ind
             }},
             True)
@@ -82,6 +84,9 @@ def analyze_trades(ex, pair, start, end):
     df = json_normalize(list(g.db['pub_trades'].find({
         'ex':ex, 'pair':pair, 'date':{'$gte':start, '$lte':end}
     })))
+
+    if df.empty:
+        return {}
 
     df_buy = df.loc[ df['side'] == 'buy' ]
     df_sell = df.loc[ df['side'] == 'sell' ]
@@ -106,7 +111,7 @@ def analyze_ob(ex, pair, start=None, end=None):
     })))
 
     log.debug('analyze_ob, start=%s, end=%s, df.count=%s',
-        start, end, df.count()['_id'])
+        start, end, df.count())
 
     df['ask_price'] = [ row[0][0] for row in df['asks'] ]
     df['ask_vol'] = [ row[0][1] for row in df['asks'] ]
@@ -119,11 +124,11 @@ def analyze_ob(ex, pair, start=None, end=None):
     ask_cutoff_price = float(df['ask_price'][0] * 1.01)
 
     for index, row in df.iterrows():
-        rem_asks = [ n[1] for n in row['asks'] if n[0] >= ask_cutoff_price ]
-        ask_inertias.append(rem_asks[0]) if len(rem_asks) > 0 else False
+        rem_asks = [ n[1] for n in row['asks'] if n[0] <= ask_cutoff_price ]
+        ask_inertias.append(sum(rem_asks)) if len(rem_asks) > 0 else False
 
         rem_bids = [ n[1] for n in row['bids'] if n[0] >= bid_cutoff_price ]
-        bid_inertias.append(rem_bids[0]) if len(rem_bids) > 0 else False
+        bid_inertias.append(sum(rem_bids)) if len(rem_bids) > 0 else False
 
     df['ask_inertias'] = ask_inertias
     df['bid_inertias'] = bid_inertias
