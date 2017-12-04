@@ -25,53 +25,51 @@ def build_series(ex, pair, start, end):
     """Calculate key indicators for 10 min periods in given date range
     for given exchange/book.
     """
+    T_PERIOD = 10 # minutes
+
     m = round(start.minute, -1)
     if m == 60:
         m = 50
     p_start = p_end = datetime.combine(start.date(), time(start.hour, m))
-    p_end += timedelta(minutes=10)
+    p_end += timedelta(minutes=T_PERIOD)
     n_mod = n_upsert = 0
 
-    # Calculate indicators for each 10 min period.
     while p_start <= end:
-        book_ind = analyze_ob(ex, pair, p_start, p_end)
+        query = {'ex':ex,'pair':pair,'start':p_start,'end':p_end}
+
+        ob_ind = analyze_ob(ex, pair, p_start, p_end)
+        ob_act_ind =  analyze_ob_actions(ex, pair, p_start, p_end)
         trade_ind = analyze_trades(ex, pair, p_start, p_end)
 
-        """
-        # TODO: create another collection for statistical data. Use
-        # chart_series only for limited set of visualization data,
-        # so that all this isn't passed to client each time for drawing
-        # charts.
-        g.db['data_stats'].update_one(
-            {'ex':ex,'pair':pair,'start':p_start,'end':p_end},
-            {'$set':{}}
-        )
-        """
-
-        r = g.db['chart_series'].update_one(
-            {'ex':ex,'pair':pair,'start':p_start,'end':p_end},
+        r = g.db['chart_series'].update_one(query,
             {'$set':{
-                'avg.bid_price': book_ind.get('bid_price',0.0),
-                'avg.ask_price': book_ind.get('ask_price',0.0),
-                'avg.bid_vol': book_ind['bid_vol'],
-                'avg.ask_vol': book_ind.get('ask_vol',0.0),
-                'avg.bid_inertia':book_ind.get('bid_inertia'),
-                'avg.ask_inertia':book_ind.get('ask_inertia'),
+                'avg.bid_price': ob_ind.get('mean_bid',0.0),
+                'avg.ask_price': ob_ind.get('mean_ask',0.0),
+                'avg.bid_vol': ob_ind['sum_bid_vol'],
+                'avg.ask_vol': ob_ind.get('sum_ask_vol',0.0),
+                'avg.bid_inertia':ob_ind.get('mean_bid_inertia'),
+                'avg.ask_inertia':ob_ind.get('mean_ask_inertia'),
                 'avg.price': trade_ind['price'],
                 'sum.n_buys':trade_ind['n_buys'],
                 'sum.n_sells':trade_ind['n_sells'],
                 'sum.buy_vol':trade_ind['buy_vol'],
                 'sum.sell_vol':trade_ind['sell_vol'],
-                'actions':analyze_ob_actions(ex, pair, p_start, p_end),
+                'orderbook': ob_ind
+            }},
+            True)
+
+        g.db['indicators'].update_one(query,
+            {'$set': {
+                'orderbook': ob_ind,
+                'ob_actoins': ob_act_ind,
                 'trades':trade_ind
             }},
-            True
-        )
-        p_start += timedelta(minutes=10)
-        p_end += timedelta(minutes=10)
+            True)
+
+        p_start += timedelta(minutes=T_PERIOD)
+        p_end += timedelta(minutes=T_PERIOD)
         n_mod += r.modified_count
         n_upsert += 1 if r.upserted_id else 0
-
     log.debug('indicators modified=%s, created=%s', n_mod, n_upsert)
 
 #---------------------------------------------------------------
