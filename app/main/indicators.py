@@ -13,12 +13,12 @@ log = getLogger(__name__)
 def update_time_series(ndays=None, nhours=None):
     """Time series is for client chart data.
     """
-    utcnow = datetime.utcnow() #+timedelta(hours=6)
     build_series(
         'QuadrigaCX',
         ('btc','cad'),
-        utcnow - timedelta(days=ndays or 0, hours=nhours or 1),
-        utcnow)
+        datetime.utcnow() - timedelta(minutes=10),
+        end = datetime.utcnow()
+    )
 
 #---------------------------------------------------------------
 def build_series(ex, pair, start, end):
