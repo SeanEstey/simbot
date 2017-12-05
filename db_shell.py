@@ -1,32 +1,33 @@
 from datetime import datetime, timedelta
+from bson import ObjectId
+from dateutil.parser import parse
 import pymongo
 import pandas as pd
 from pandas import DataFrame
 from pandas.io.json import json_normalize
-from dateutil.parser import parse
+
+pd.set_option('display.width',1000)
 client = pymongo.MongoClient()
+
 db = client['simbot']
 ex = 'QuadrigaCX'
 pair = ['btc','cad']
 
-####### analyze_ob ##########
-end = parse("2017-12-03T18:15:48.000Z")
-start = end + timedelta(minutes=-10)
-df = json_normalize(list(db['pub_trades'].find({
-    'ex':ex, 'pair':pair, 'date':{'$gte':start, '$lte':end}
-})))
+####### ob_book_diff ##########
 
-df_buy = df.loc[ df['side'] == 'buy' ]
-df_sell = df.loc[ df['side'] == 'sell' ]
+id_a = ObjectId("5a25db9e43d0c4562e496aa5") # 11:34, 50 asks
+id_b = ObjectId("5a25dbe943d0c4562e496ae5") # 11:36, 49 asks
+book_a = db['pub_books'].find_one({"_id":id_a})
+book_b = db['pub_books'].find_one({"_id":id_b})
+side = 'asks'
 
-results = {
-    'n_buys': int(df_buy.count()['_id']),
-    'buy_vol': round(float(df_buy['volume'].sum()), 5),
-    'n_sells': int(df_sell.count()['_id']),
-    'sell_vol': round(float(df_sell['volume'].sum()), 5),
-    'price': round(float(df['price'].mean()), 2),
-    'price_diff': round(float(df.iloc[-1]['price'] - df.iloc[0]['price']), 2),
-}
+df_a = pd.DataFrame(
+    data=[[book_a['date']]+n for n in book_a[side]],
+    columns=['date_a','price','volume_a'])
+df_a.set_index('price')
 
-results['buy_rate'] = round(float(results['n_buys'] / df.count()['_id']), 5)
-results['vol_diff'] = round(float(results['buy_vol'] - results['sell_vol']), 5)
+df_b = pd.DataFrame(
+    data=[[book_b['date']]+n for n in book_b[side]],
+    columns=['date_b','price','volume_b'])
+df_b.set_index('price')
+

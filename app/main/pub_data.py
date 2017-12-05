@@ -2,6 +2,7 @@
 import logging
 from time import sleep
 from pprint import pprint
+import pandas as pd
 from datetime import datetime
 from pymongo import InsertOne
 from pymongo.errors import BulkWriteError
@@ -116,7 +117,7 @@ def save_orderbook():
             smart_emit('updateGraphData', dumps({'orderbook':document}))
 
 #---------------------------------------------------------------
-def book_diff_df(ex, pair, ordersv1, dt1, ordersv2, dt2, side):
+def book_diff_df(ex, pair, side, book_a, book_b):
     """Same as below but using pandas dataframes.
     https://stackoverflow.com/questions/28901683/pandas-get-rows-which-are-not-in-other-dataframe
     https://pandas.pydata.org/pandas-docs/stable/merging.html
@@ -135,8 +136,32 @@ def book_diff_df(ex, pair, ordersv1, dt1, ordersv2, dt2, side):
     7. For rows with volume in Col1 but not Col2, mark as cancelled order
     8. For rows with volume in Col2 but not Col1, mark as added order
     """
-    pass
 
+    pd.set_option('display.width',1000)
+
+    df_a = pd.DataFrame(
+        data=[[book_a['date']]+n for n in book_a[side]],
+        columns=['date_a','price','volume_a'])
+    df_a.set_index('price')
+
+    df_b = pd.DataFrame(
+        data=[[book_b['date']]+n for n in book_b[side]],
+        columns=['date_b','price','volume_b'])
+    df_b.set_index('price')
+
+    df_big =  pd.concat([df_a,df_b],axis=0)
+    df_big.columns = ['price','date_a','date_b','volume_a','volume_b']
+    df_big['price'] = df_big['index']
+    print(df_big.price.unique())
+
+    #df_merge = pd.merge(df_a, df_b, on='price')
+    #print(df_merge)
+
+    #df_all = pd.concat([df_a,df_b],axis=1)
+    #print(df_all)
+
+    #df_diff = df_all.loc[ df_all['volume_a'] != df_all['volume_b'] ]
+    #print(df_diff)
 
 #---------------------------------------------------------------
 def book_diff(ex, pair, ordersv1, dt1, ordersv2, dt2, side):
