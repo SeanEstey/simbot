@@ -139,29 +139,28 @@ def book_diff_df(ex, pair, side, book_a, book_b):
 
     pd.set_option('display.width',1000)
 
-    df_a = pd.DataFrame(
-        data=[[book_a['date']]+n for n in book_a[side]],
-        columns=['date_a','price','volume_a'])
-    df_a.set_index('price')
+    for side in ['bids', 'asks']:
+        df_a = pd.DataFrame(
+            data=[[book_a['date']]+n for n in book_a[side]],
+            columns=['date_a','price_a','volume_a'])
+        df_b = pd.DataFrame(
+            data=[[book_b['date']]+n for n in book_b[side]],
+            columns=['date_b','price_b','volume_b'])
 
-    df_b = pd.DataFrame(
-        data=[[book_b['date']]+n for n in book_b[side]],
-        columns=['date_b','price','volume_b'])
-    df_b.set_index('price')
+        dfm = df_a.merge(df_b, left_on='price_a', right_on='price_b', how='outer')
+        dfm = dfm.loc[ dfm['volume_a'] != dfm['volume_b'] ]
 
-    df_big =  pd.concat([df_a,df_b],axis=0)
-    df_big.columns = ['price','date_a','date_b','volume_a','volume_b']
-    df_big['price'] = df_big['index']
-    print(df_big.price.unique())
+        print('found %s %s ob diffs:' % (len(dfm), side))
+        print(dfm)
 
-    #df_merge = pd.merge(df_a, df_b, on='price')
-    #print(df_merge)
+        for index, row in dfm.iterrows():
+            # A. (vol_a=Float and vol_b=NaN) == filled order
 
-    #df_all = pd.concat([df_a,df_b],axis=1)
-    #print(df_all)
+            # B. (vol_a=NaN and vol_b=Float) == added order
 
-    #df_diff = df_all.loc[ df_all['volume_a'] != df_all['volume_b'] ]
-    #print(df_diff)
+            # C. (vol_a=Float, vol_b=Float, vol_a != vol_b) == partial order fill
+
+            pass
 
 #---------------------------------------------------------------
 def book_diff(ex, pair, ordersv1, dt1, ordersv2, dt2, side):
