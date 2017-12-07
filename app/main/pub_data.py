@@ -117,50 +117,83 @@ def save_orderbook():
             smart_emit('updateGraphData', dumps({'orderbook':document}))
 
 #---------------------------------------------------------------
-def book_diff_df(ex, pair, side, book_a, book_b):
+def book_diff_df(ex, pair, t0_data, t1_data):
     """Same as below but using pandas dataframes.
+    t0_data, t1_data : documents from db.pub_books collection
     https://stackoverflow.com/questions/28901683/pandas-get-rows-which-are-not-in-other-dataframe
     https://pandas.pydata.org/pandas-docs/stable/merging.html
-
-    Algorithm:
-
-    1. Build each orders list into pandas dataframe as: [price, date, volume]
-    2. Add into frames list:
-        frames=[df1, df2]
-    3. Concat frames:
-        pd.concat(frames)
-    4. Filter out rows where volumes match
-    5. We're left with just the differences
-    6. For rows with different volumes, iterate through trades with matching
-    timeframe/price, catalog them
-    7. For rows with volume in Col1 but not Col2, mark as cancelled order
-    8. For rows with volume in Col2 but not Col1, mark as added order
     """
+    _timer = datetime.utcnow()
+    results = {'df_askacts':None, 'df_bidacts':None, 'df_buys':None, 'df_sells':None}
 
-    pd.set_option('display.width',1000)
+    trades = json_normalize(list(
+        db['pub_trades'].find(
+            {'pair':['btc','cad'], 'date':{'$gte':t0_data['date'], '$lte':t1_data['date']}},
+            {'_id':0, 'volume':1, 'side':1, 'price':1, 'date':1, 'tid':1})
+    ))
 
     for side in ['bids', 'asks']:
-        df_a = pd.DataFrame(
-            data=[[book_a['date']]+n for n in book_a[side]],
-            columns=['date_a','price_a','volume_a'])
-        df_b = pd.DataFrame(
-            data=[[book_b['date']]+n for n in book_b[side]],
-            columns=['date_b','price_b','volume_b'])
+        df_t0 = pd.DataFrame(
+            data=[n for n in t0_data[side]],
+            columns=['price_t0','volume_t0'])
+        df_t1 = pd.DataFrame(
+            data=[n for n in t1_data[side]],
+            columns=['price_t1','volume_t1'])
 
-        dfm = df_a.merge(df_b, left_on='price_a', right_on='price_b', how='outer')
-        dfm = dfm.loc[ dfm['volume_a'] != dfm['volume_b'] ]
+        # Merge together along price index
+        df_diff = df_t0.merge(df_t1,
+            left_on='price_t0', right_on='price_t1', how='outer')
+        df_diff['price'] = df_diff.price_t0.combine_first(df_diff.price_t1)
+        df_diff.sort_values('price')
+        df_diff['page'] = df_diff.index
+        df_diff['vdiff'] = df_diff['volume_t1'].subtract(
+            df_diff['volume_t0'],
+            fill_value=0)
 
-        print('found %s %s ob diffs:' % (len(dfm), side))
-        print(dfm)
+        # Filter out orders without any changes
+        df_diff = df_diff.loc[df_diff.vdiff != 0]
+        df_diff.drop(
+            ['price_t0','price_t1','volume_t1','volume_t0'],
+            inplace=True, axis=1)
 
-        for index, row in dfm.iterrows():
-            # A. (vol_a=Float and vol_b=NaN) == filled order
+        # Merge trades made during timespan along price index
+        t_side = 'sell' if side == 'bids' else 'buy'
+        df_diff = df_diff.merge(trades.loc[trades.side == t_side],
+            left_on='price', right_on='price', how='outer')
+        df_trades = df_diff.loc[df_diff.tid.notna()].copy()
+        df_trades = df_trades[
+            ['date', 'page', 'tid', 'side', 'price', 'vdiff', 'volume']]
+        df_trades.index.name = '%s.TRADES' %(t_side.upper())
 
-            # B. (vol_a=NaN and vol_b=Float) == added order
+        df_acts = df_diff.loc[df_diff.tid.isna()].copy()
+        df_acts['date'] = df_acts['date'].fillna(value=t0_data[0])
+        df_acts = df_acts[['date', 'page', 'price', 'vdiff']]
+        df_acts['action'] = ['added' if vdiff > 0 else 'cancelled' for vdiff in df_acts['vdiff']]
+        df_acts.index.name = '%s.ACTIONS' %(side.upper())
 
-            # C. (vol_a=Float, vol_b=Float, vol_a != vol_b) == partial order fill
+        if side == 'bids':
+            results.update({
+                'df_sells': df_trades,
+                'df_bidacts': df_acts
+            })
+        elif side == 'asks':
+            results.update({
+                'df_buys': df_trades,
+                'df_askacts': df_acts
+            })
 
-            pass
+    for k in ['df_askacts', 'df_bidacts', 'df_buys', 'df_sells']:
+        r = results[k]
+        print('LENGTH=%s'%(len(r)))
+        print(r)
+        print('--------------------------------------')
+
+    print('\nCOMPLETED IN %s MS' %((datetime.utcnow() - _timer).microseconds/1000))
+    print('N_TOTAL_TRADES=%s' % len(trades))
+    #print('%s.PARSED ORDER FILLS, %s ACTUAL TRADES' %(
+    #    side.upper(), len(df_sells) + len(df_buys), len(df_trades)))
+    #print(df_trades.sort_values('date'))
+    #print('--------------------------------------')
 
 #---------------------------------------------------------------
 def book_diff(ex, pair, ordersv1, dt1, ordersv2, dt2, side):
