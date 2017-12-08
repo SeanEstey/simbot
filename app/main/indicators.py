@@ -110,8 +110,8 @@ def analyze_ob(ex, pair, start=None, end=None):
         'ex':ex, 'pair':pair, 'date':{'$gte':start, '$lte':end}
     })))
 
-    log.debug('analyze_ob, start=%s, end=%s, df.count=%s',
-        start, end, df.count())
+    #log.debug('analyze_ob, start=%s, end=%s, df.count=%s',
+    #    start, end, df.count())
 
     df['ask_price'] = [ row[0][0] for row in df['asks'] ]
     df['ask_vol'] = [ row[0][1] for row in df['asks'] ]

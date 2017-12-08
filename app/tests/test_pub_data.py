@@ -24,14 +24,20 @@ class PubDataTests(unittest.TestCase):
         pass
 
     def test_book_diff(self):
-        id_a = ObjectId("5a25db9e43d0c4562e496aa5") # 11:34, 50 asks
-        id_b = ObjectId("5a25dbe943d0c4562e496ae5") # 11:36, 49 asks
+        import pandas as pd
+        pd.set_option('display.width',1000)
+
+        last = list(g.db['pub_books'].find(
+            {'ex':'QuadrigaCX', 'pair':['btc','cad']
+        }).sort('date',-1).limit(75))
+
         book_diff_df(
             'QuadrigaCX',
             ('btc','cad'),
-            'asks',
-            g.db['pub_books'].find_one({"_id":id_a}),
-            g.db['pub_books'].find_one({"_id":id_b}))
+            last[35],
+            last[5]
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
