@@ -101,8 +101,6 @@ def save_orderbook():
             if last.count() > 0:
                 last = list(last)[0]
                 book_diff_df(conf['NAME'], pair, last, orders)
-                #book_diff(conf['NAME'], pair, last['bids'], last['date'], orders['bids'], dt, 'bids')
-                #book_diff(conf['NAME'], pair, last['asks'], last['date'], orders['asks'], dt, 'asks')
 
             document = {
                 'ex':conf['NAME'],
@@ -127,61 +125,59 @@ def book_diff_df(ex, pair, t0_data, t1_data):
 
     for side in ['bids', 'asks']:
         _type = 'SELL' if side == 'bids' else 'BUY'
-        df_t0 = pd.DataFrame(
+        df1 = pd.DataFrame(
             data=[n for n in t0_data[side]],
             columns=['price_t0','volume_t0'])
-        df_t1 = pd.DataFrame(
+        df2 = pd.DataFrame(
             data=[n for n in t1_data[side]],
             columns=['price_t1','volume_t1'])
 
         # Find price/volume diffs
-        df_diff = df_t0.merge(df_t1,
+        df3 = df1.merge(df2,
             left_on='price_t0', right_on='price_t1', how='outer')
-        df_diff['price'] = df_diff.price_t0.combine_first(df_diff.price_t1)
-        df_diff.sort_values('price')
-        df_diff['position'] = df_diff.index
-        df_diff['vdiff'] = df_diff['volume_t1'].subtract(
-            df_diff['volume_t0'], fill_value=0)
-        df_diff = df_diff.loc[df_diff.vdiff != 0]
-        df_diff.drop(
+        df3['price'] = df3.price_t0.combine_first(df3.price_t1)
+        df3.sort_values('price')
+        df3['position'] = df3.index
+        df3['vdiff'] = df3['volume_t1'].subtract(
+            df3['volume_t0'], fill_value=0)
+        df3 = df3.loc[df3.vdiff != 0]
+        df3.drop(
             ['price_t0','price_t1','volume_t1','volume_t0'],
             inplace=True, axis=1)
 
-        # Combine trade data
-        df_trades = json_normalize(list(
+        # Build Trades dataframe
+        dftd = json_normalize(list(
             g.db['pub_trades'].find({'ex':ex, 'pair':pair, 'side':_type,
                 'date':{'$gte':t0_data['date'], '$lte':t1_data['date']}},
                 {'_id':0, 'volume':1, 'side':1, 'price':1, 'date':1, 'tid':1})
         ))
-        if not df_trades.empty:
-            df_trades = pd.merge(df_diff, df_trades, on='price', how='right' )
-            df_trades = df_trades[
+        if not dftd.empty:
+            dftd = pd.merge(df3, dftd, on='price', how='right' )
+            dftd = dftd[
                 ['date', 'position', 'tid', 'side', 'price', 'vdiff', 'volume']]
-            df_trades.index.name = '%s.TRADES' %(_type)
-            df_trades.drop(['vdiff'],inplace=True,axis=1)
-            df_trades['action'] = 'FILL'
-            df_trades['position'] = df_trades['position'].fillna(-1)
-            df_trades.set_index('date', inplace=True)
-            df_trades.sort_index(inplace=True)
+            dftd.drop(['vdiff'],inplace=True,axis=1)
+            dftd['action'] = 'FILL'
+            dftd['position'] = dftd['position'].fillna(-1)
+            dftd.sort_index(inplace=True)
 
         # Filter out the trades, leaving only NEW & CANCEL actions
-        if not df_trades.empty:
-            df_acts = df_diff.loc[~df_diff['price'].isin(df_trades['price'])]
+        if not dftd.empty:
+            df_acts = df3.loc[~df3['price'].isin(dftd['price'])]
         else:
-            df_acts = df_diff
+            df_acts = df3
         df_acts.reset_index(inplace=True)
         df_acts['date'] = t0_data['date']
         df_acts = df_acts[['date', 'position', 'price', 'vdiff']]
         df_acts['action'] = ['ADD' if vdiff > 0 else 'CANCEL' for vdiff in df_acts['vdiff']]
 
         if side == 'bids':
-            r.update({'df_sells': df_trades, 'df_bidacts': df_acts})
+            r.update({'df_sells': dftd, 'df_bidacts': df_acts})
         elif side == 'asks':
-            r.update({'df_buys': df_trades,'df_askacts': df_acts})
+            r.update({'df_buys': dftd,'df_askacts': df_acts})
 
     # Save to DB
     df_allacts = r['df_askacts'].append(r['df_bidacts'])
-    df_alltrades = r['df_buys'] + r['df_sells']
+    df_alltrades = r['df_buys'].append(r['df_sells'])
     df_allacts['ex'] = df_alltrades['ex'] = ex
     list_allacts = df_allacts.to_dict('records')
     for n in range(0,len(list_allacts)):
@@ -195,10 +191,12 @@ def book_diff_df(ex, pair, t0_data, t1_data):
         g.db['pub_actions_'].insert_many(list_alltrades)
 
     # Print results to stdout
+    """
     for k in ['df_askacts', 'df_bidacts', 'df_buys', 'df_sells']:
         print(k.upper())
         print(r[k])
         print('--------------------------------------')
+    """
     elapsed = (datetime.utcnow()-_timer).microseconds/1000
     n_diffs = len(r['df_askacts']) + len(r['df_bidacts']) + len(r['df_buys']) + len(r['df_sells'])
     print('\nDURATION=%sms, OB.DIFFS=%s, TRADES.TOTAL=%s' %(
